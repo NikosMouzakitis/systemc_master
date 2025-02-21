@@ -14,16 +14,16 @@ SC_MODULE(Ram) {
 	
 	void func(void)
 	{
-		if(write.read() == true)
+		if( (write.read() == true) && (read.read() == false))
 		{
 			memory[addr_in.read()] = value.read();
-			std::cout << std::hex <<  "Write addr[0x" << addr_in.read() <<"] <<-- " << value.read() << std::endl;
+			std::cout << std::hex <<  "@" << sc_time_stamp() << " Write addr[0x" << addr_in.read() <<"] <<-- " << value.read() << std::endl;
 			addr_out.write(0x0);
-		} else if(read.read() == true) {
+		} else if( (write.read() == false) && (read.read() == true)) {
 			addr_out.write(memory[addr_in.read()]);
-			std::cout << "Read addr[0x" << addr_in.read() <<"] == " << addr_out.read() << std::endl;
+			std::cout << "@" << sc_time_stamp() <<  "Read addr[0x" << addr_in.read() <<"] == " << memory[addr_in.read()] << std::endl;
 		} else {
-			std::cout << "R/W not specified." << std::endl;
+			std::cout << "@" << sc_time_stamp() << "R/W not specified." << std::endl;
 			addr_out.write(0x0);
 		}
 	}
@@ -78,6 +78,10 @@ int sc_main(int argc, char *argv[])
 	write.write((bool)0);
 	read.write((bool)1);
 	addr_in.write(0x100);
+
+	sc_start(10, SC_NS); // Run for 10 ns
+	write.write((bool)1);
+	read.write((bool)1);
 
 	sc_start(10, SC_NS); // Run for 10 ns
 

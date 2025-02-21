@@ -1,5 +1,5 @@
 $date
-     Feb 21, 2025       17:26:48
+     Feb 21, 2025       17:33:29
 $end
 
 $version
@@ -44,3 +44,11 @@ b1010101111001101 aaaae
 0aaaaa
 
 #20000
+1aaaaa
+1aaaab
+b0 aaaae
+
+#25000
+0aaaaa
+
+#30000
