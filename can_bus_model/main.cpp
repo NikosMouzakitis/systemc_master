@@ -3,6 +3,8 @@ using namespace std;
 
 
 #define nodes 2
+#define SIM_TIME  300
+
 typedef sc_uint<1> bit;
 
 //details of a sender each time.
@@ -37,10 +39,14 @@ SC_MODULE(can_node)
 	        int time = static_cast<int>(sc_time_stamp().to_double());
 		
 		if(access_req_send) {
-
-			if(access_granded.read() == 0) {
+			
+			std::cout << "@ " << sc_time_stamp() << " " << name() << "checking if access granded finised" <<  std::endl;
+			if(access_granded.read() == '1') {
+				cout << access_granded.read() <<endl;
+			} else {
+				access_req.write('0');
 				tx_data.write(0x0);	
-				tx_id.write(0x0);	
+				tx_id.write(0x0);
 			}	
 		}
 
@@ -111,7 +117,7 @@ SC_MODULE(can_bus)
 	int to_get[nodes];
 	int collision = 0;
 	int winner;
-	int close_access = 0; // communication between entry and second funcs.
+	int reception = 0; // states that bus have to receive.
 	void init(void)
 	{
 		//initialy no node has access to transmit.
@@ -145,32 +151,8 @@ SC_MODULE(can_bus)
 		// logic for collision arbitration
 
 	}
-	void second_func(void) {
 
-		if(ongoing_reception) {	
-			cout << "bus tx now" << endl;
-			bus_tx.write('1');
-			tx_data.write(sd[winner].data);
-			tx_id.write(sd[winner].id);
-	//		cout << "making close access 1" << endl;
-	//		close_access = 1;
-			access_granded[winner].write('0');
-			winner = 0;
-			for(int i = 0; i < nodes; i++) {
-				sd[i].id=0;
-				sd[i].data = 0;
-			}
-
-			ongoing_reception = 0;
-			ongoing_transmission = 1;
-		} else if(ongoing_transmission) {
-			cout << "last" << endl;	
-			tx_data.write(0x0);
-			tx_id.write(0x0);
-
-			ongoing_transmission = 0;
-		}
-	}
+	
 	void entry_func(void)
 	{
 		std::cout << "bus activated" << std::endl;
@@ -184,7 +166,9 @@ SC_MODULE(can_bus)
 					collision+=1;
 				}	
 			}	
-
+			//nothing to receive.	
+			if(!collision)
+				return;
 			if(collision > 1)
 				collision = 1; //need for arbitration.
 			else
@@ -197,18 +181,37 @@ SC_MODULE(can_bus)
 			cout << "winner" << " " << winner << endl;
 			access_granded[winner].write('1');
 			ongoing_reception = 1;
-		} 
+		}
+
+		if(ongoing_reception) {	
+			cout << "bus tx now" << endl;
+			bus_tx.write('1');
+			tx_data.write(sd[winner].data);
+			tx_id.write(sd[winner].id);
+			access_granded[winner].write('0');
+			to_get[winner] = 0;
+			winner = 0;
+			for(int i = 0; i < nodes; i++) {
+				sd[i].id=0;
+				sd[i].data = 0;
+			}
+
+			ongoing_reception = 0;
+			ongoing_transmission = 1;
+		} else if(ongoing_transmission) {
+			cout << "last" << endl;	
+			tx_data.write(0x0);
+			tx_id.write(0x0);
+			bus_tx.write('0');	
+			ongoing_transmission = 0;
+		}
+
 	}
 
 	SC_CTOR(can_bus)
 	{
 		std::cout << "can bus created:\t" << name() << std::endl;
 		SC_METHOD(entry_func);
-		
-		for (int i = 0; i < nodes; i++)
-			sensitive << access_req[i];
-
-		SC_METHOD(second_func);
 		sensitive << clock.pos();
 	}
 };
@@ -281,7 +284,7 @@ int sc_main(int argc, char *argv[])
 	sc_trace(tf, clk, "clock");
 
 
-	sc_start(sc_time(80,SC_NS));
+	sc_start(sc_time(SIM_TIME,SC_NS));
 
 	sc_close_vcd_trace_file(tf);
 
