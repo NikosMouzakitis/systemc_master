@@ -5,6 +5,12 @@ using namespace std;
 #define nodes 2
 typedef sc_uint<1> bit;
 
+//details of a sender each time.
+struct sender_details {
+	sc_uint<32> id;
+	sc_uint<32> data;
+};
+
 SC_MODULE(can_node)
 {
 
@@ -14,7 +20,8 @@ SC_MODULE(can_node)
 	//reception from bus.
 	sc_in<sc_uint<32>>	rx_id;
 	sc_in<sc_uint<32>>	rx_data;
-	//transmision to bus	
+	sc_in<bit>		bus_tx;
+	//transmission to bus	
 	sc_out<sc_uint<32>>	tx_id;
 	sc_out<sc_uint<32>>	tx_data;
 	//for accessing the bus.	//arbitration.
@@ -25,27 +32,38 @@ SC_MODULE(can_node)
 
 	void transmit(void)
 	{
-		std::cout << "@ " << sc_time_stamp() << "  TX: " << name() << std::endl;
+	
+//		std::cout << "@ " << sc_time_stamp() << "  TX: " << name() << std::endl;
 	        int time = static_cast<int>(sc_time_stamp().to_double());
+		
+		if(access_req_send) {
 
-		if( ( (time%15)==0) && ( strcmp(name(),"node1")==0 ) )
-		{
-			std::cout << "need to TX: " << name() << std::endl;
-			access_req.write('1');
-			access_req_send = 1;
-			sc_stop();
+			if(access_granded.read() == 0) {
+				tx_data.write(0x0);	
+				tx_id.write(0x0);	
+			}	
 		}
 
-
+		//request a transmission.	
+		if( ( (time > 0) && (time%15)==0) && ( strcmp(name(),"node1")==0 ) && (bus_tx.read() == 0) )
+		{
+			std::cout << "@ " << sc_time_stamp() << "  TX: " << name() << std::endl;
+			std::cout << "need to TX: " << name() << std::endl;
+			access_req.write('1');
+			tx_id.write(0x13);
+			tx_data.write(0xabcd);
+			access_req_send = 1;
+			return;
+		}
 	}
 	
 	void receive(void)
 	{
-		std::cout << "@ " << sc_time_stamp() << "  RX: " << name() << std::endl;
+//		std::cout << "@ " << sc_time_stamp() << "  RX: " << name() << std::endl;
 		
 	}
 	
-	void init()
+	void init(void)
 	{
 		tx_id.write(0x0);
 		tx_data.write(0x0);
@@ -66,43 +84,132 @@ SC_MODULE(can_node)
 
 SC_MODULE(can_bus)
 {
-	sc_in_clk clock;
+	sc_in_clk		clock;
 	//for access request on the bus from nodes.
-	sc_in<bit>access_req[nodes];
+	sc_in<bit>		access_req[nodes];
 	//for receiving message from the respective CAN node who 
 	//won the arbitration
-	sc_in<sc_uint<32>> rx_data[nodes];
-	sc_in<sc_uint<32>> rx_id[nodes];
+	sc_in<sc_uint<32>>	rx_data[nodes];
+	sc_in<sc_uint<32>>	rx_id[nodes];
 
 	//granding access to a specific
 	//can node to transmit a can message.
-	sc_out<bit> access_granded[nodes];
-	//for transmision of bus messages to all
+	sc_out<bit>		access_granded[nodes];
+	//for transmission of bus messages to all
 	//can nodes.	
-	sc_out<sc_uint<32>> tx_data;
-	sc_out<sc_uint<32>> tx_id;
+	sc_out<sc_uint<32>>	tx_data;
+	sc_out<sc_uint<32>>	tx_id;
 
-	void init()
+	//bus transmit(broadcast CAN message behavior)
+	sc_out<bit>		bus_tx;
+	
+	int ongoing_reception = 0;
+	int ongoing_transmission = 0;
+
+	
+	sender_details sd[nodes];
+	int to_get[nodes];
+	int collision = 0;
+	int winner;
+	int close_access = 0; // communication between entry and second funcs.
+	void init(void)
 	{
 		//initialy no node has access to transmit.
 		for(int i = 0; i < nodes; i++) {
 			access_granded[i].write('0');	
+			bus_tx.write('0');
 			tx_data.write(0x0);
 			tx_id.write(0x0);	
+			to_get[i] = 0;
+			sd[i].id = 0;
+			sd[i].data = 0;
+		}
 	}
+	void print_bus_access(void)
+	{
+		std::cout << "@ " << sc_time_stamp() << ", Transmission requests:: " <<std::endl;
+		for(int i = 0 ; i < nodes; i++)
+			if(to_get[i] == 1)
+				std::cout << "ID: " << std::hex << sd[i].id << " Payload: " << sd[i].data << std::endl;
+	}
+	void perform_arbitration(void)
+	{
+		//logic when no collision.
+		if(!collision) {
+			for(int i = 0; i < nodes; i++){
+				if(to_get[i] == 1)
+					winner = i;
+					break;
+			}
+		}
+		// logic for collision arbitration
 
 	}
+	void second_func(void) {
+
+		if(ongoing_reception) {	
+			cout << "bus tx now" << endl;
+			bus_tx.write('1');
+			tx_data.write(sd[winner].data);
+			tx_id.write(sd[winner].id);
+	//		cout << "making close access 1" << endl;
+	//		close_access = 1;
+			access_granded[winner].write('0');
+			winner = 0;
+			for(int i = 0; i < nodes; i++) {
+				sd[i].id=0;
+				sd[i].data = 0;
+			}
+
+			ongoing_reception = 0;
+			ongoing_transmission = 1;
+		} else if(ongoing_transmission) {
+			cout << "last" << endl;	
+			tx_data.write(0x0);
+			tx_id.write(0x0);
+
+			ongoing_transmission = 0;
+		}
+	}
+	void entry_func(void)
+	{
+		std::cout << "bus activated" << std::endl;
+		if(!ongoing_reception && !ongoing_transmission && (static_cast<int>(sc_time_stamp().to_double()) != 0) )
+		{
+			for(int i =0; i < nodes; i++) {
+				if(access_req[i].read() == 1) {
+					to_get[i] = 1;	
+					sd[i].id = rx_id[i].read();			
+					sd[i].data = rx_data[i].read();			
+					collision+=1;
+				}	
+			}	
+
+			if(collision > 1)
+				collision = 1; //need for arbitration.
+			else
+				collision = 0; //no collision
+			
+			print_bus_access();	
+			//ack the arbitration winner to send data.
+			//winner[] 's index hold the winner on the arbitration.
+			perform_arbitration();
+			cout << "winner" << " " << winner << endl;
+			access_granded[winner].write('1');
+			ongoing_reception = 1;
+		} 
+	}
+
 	SC_CTOR(can_bus)
 	{
 		std::cout << "can bus created:\t" << name() << std::endl;
+		SC_METHOD(entry_func);
+		
+		for (int i = 0; i < nodes; i++)
+			sensitive << access_req[i];
 
-
-		//initialy no node has access to transmit.
-		for(int i = 0; i < nodes; i++) {
-			access_granded[i].write('0');	
-			tx_data.write(0x0);
-			tx_id.write(0x0);	
-		}
+		SC_METHOD(second_func);
+		sensitive << clock.pos();
 	}
 };
 
@@ -115,12 +222,13 @@ int sc_main(int argc, char *argv[])
 	can_node n2("node2");
 	can_bus bus("can_bus1");	
 	
-	sc_signal<bit> access_req_signal[nodes];
-	sc_signal<sc_uint<32>> rx_data_signal[nodes];
-	sc_signal<sc_uint<32>> rx_id_signal[nodes];
-	sc_signal<bit> access_granded_signal[nodes];
-	sc_signal<sc_uint<32>> tx_data_signal;
-	sc_signal<sc_uint<32>> tx_id_signal;
+	sc_signal<bit>		access_req_signal[nodes];
+	sc_signal<sc_uint<32>>	rx_data_signal[nodes];
+	sc_signal<sc_uint<32>>	rx_id_signal[nodes];
+	sc_signal<bit>		access_granded_signal[nodes];
+	sc_signal<sc_uint<32>>	tx_data_signal;
+	sc_signal<sc_uint<32>>	tx_id_signal;
+	sc_signal<bit>		bus_tx_signal;
 
 	//port mapping --automate the mappings.
 	n1.clock(clk);
@@ -130,6 +238,7 @@ int sc_main(int argc, char *argv[])
 	n1.tx_id(rx_id_signal[0]);
 	n1.tx_data(rx_data_signal[0]);
 	n1.access_req(access_req_signal[0]);
+	n1.bus_tx(bus_tx_signal);
 
 	n2.clock(clk);
 	n2.access_granded(access_granded_signal[1]);
@@ -138,6 +247,7 @@ int sc_main(int argc, char *argv[])
 	n2.tx_id(rx_id_signal[1]);
 	n2.tx_data(rx_data_signal[1]);
 	n2.access_req(access_req_signal[1]);
+	n2.bus_tx(bus_tx_signal);
 	
 
 	
@@ -151,22 +261,31 @@ int sc_main(int argc, char *argv[])
 	}
 	bus.tx_id(tx_id_signal);
 	bus.tx_data(tx_data_signal);
-	
+	bus.bus_tx(bus_tx_signal);
 
-//	n1.init();
-//	n2.init();
-//	bus.init();
+	//initialize signals
+	n1.init();
+	n2.init();
+	bus.init();
 
 	sc_trace_file *tf = sc_create_vcd_trace_file("waveform");
+	for (int i = 0; i < nodes; i++) {
+		sc_trace(tf, access_req_signal[i], "access_request_" + std::to_string(i));
+		sc_trace(tf, access_granded_signal[i], "access_granted_" + std::to_string(i));
+		sc_trace(tf, rx_id_signal[i], "rx_id_" + std::to_string(i));
+		sc_trace(tf, rx_data_signal[i], "rx_data_" + std::to_string(i));
+	}
+	sc_trace(tf, tx_id_signal, "tx_id");
+	sc_trace(tf, tx_data_signal, "tx_data");
+	sc_trace(tf, bus_tx_signal, "bus_transmission");
+	sc_trace(tf, clk, "clock");
 
-	sc_trace(tf,access_req_signal,"access_request");
-	sc_trace(tf,access_granded_signal,"access_granded");
 
-
-	sc_start();
-	sc_start(sc_time(100,SC_NS));
+	sc_start(sc_time(80,SC_NS));
 
 	sc_close_vcd_trace_file(tf);
+
+
 	return 0;
 
 }
