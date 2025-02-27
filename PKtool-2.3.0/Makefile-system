@@ -1,0 +1,26 @@
+#Makefile-system
+
+CC=gcc
+CXX=g++
+LINK=g++
+AR=ar
+CP=cp
+MV=mv
+RM=rm
+AS=as
+AWK=awk
+GAWK=gawk
+CHMOD=chmod
+FIND=find
+LEX=flex
+LN=ln
+LS=ls
+MKDIR=mkdir
+RMDIR=rmdir
+RANLIB=ranlib
+SED=sed
+YACC=bison -y
+TR=tr
+MYPWD=pwd
+
+

@@ -1,0 +1,117 @@
+README for fir
+===================================================================
+
+
+This example shows the application of PKtool onto a SystemC description 
+called "fir", which has been taken from the examples provided by the 
+SystemC 2.3.1 release. More precisely, the fir example is located in the release directory 
+examples\sysc\fir. In such directory it is possible to find a readme file
+reporting a complete documentation of the system and its functionality.
+
+The fir example is originally based on two possible system implementations; we can refer
+to them as "fir_module" and "fir_fsm". The first one is constituted by a single
+sc_module realizing the whole functionality. The second implementation is an FSM-based  
+architecture constituted by a top_level sc_module wrapping two sub-modules, a datapath   
+unit (fir_data) and a control unit (fir_fsm).
+In this example, PKtool is applied onto the two fir implementations with different
+modalities. In the case of fir_module, the sc_module representing the whole system
+is configured for PKtool simulations by definiting and instancing a matching
+power_module. In the case of fir_fsm, the configuration for PKtool analysis and power_module conversion 
+have been carried out only for the fir_data module. 
+The power_module classes are defined in the header file "power_modules.h".  
+For selecting which fir implementation is to be simulated, the user must act on the
+macro PK_FIR_RTL defined in the file power_modules.h: commenting/uncommenting
+such macro will cause the selection of fir_module/fir_fsm.
+
+The user must select the power model to be applied at the beginning of a PKtool simulation, 
+through a specification procedure based on two reading options.
+The option 1 requires to specify the model data via a window interaction.  
+The option 2 allows to read the model data from a pre-existent configuration file,
+which must be formatted in suitable way. 
+A More detailed description of this procedure can be found in the PKtool user manual.  
+An example of configuration file is reported in the directory "cfg_file"; this file can be 
+used for an immediate running of PKtool simulations through the reading option 2. For this 
+purpose, the user should do a copy of this file in the top fir directory, where the project 
+files are located. The proposed configuration is based on the power_model operators_1,
+ which provides energy estimations
+given by the sum of the contributions due to the additions and multiplications occurred 
+during a simulation. The signals involved in these operations 
+have been converted into augmented counterparts, in order to allow operation sampling.
+The choice of this model has seemed appropriate, considering the relevant presence of 
+additions and multiplications in the fir functionality.
+The simulation results will be reported in a text file called "pk_process_body_res" or
+"pk_process_body.FirData_res", on the basis of which fir implementation is enabled.
+
+
+
+
+
+
+RUNNING THE EXAMPLE 
+===================
+
+running the example under Unix
+---------------------------------
+    
+1. set suitable values in the 'Makefile-local' file for the variables
+   CXX, LINK, SYSTEMC_PATH, SYSTEMC_TARGET_ARCH, PKTOOL_PATH.
+   For this purpose, follow the rules reported in the INSTALL file 
+   located in the PKtool top level directory, at the section: 
+   'Installation Notes for Unix'-> 'Basic PKtool Installation steps'-> point 2;
+   
+2. change to the  directory PKtool-2.3.0/examples/PKtool/sysc/fir.
+   Make sure that you have writing privileges for this directory.
+     
+3. type `make' for compiling the example;
+     
+4. run the example typing './fir' or 'fir'.
+	  
+ Note: the example will work with the PKtool library installed.
+
+
+
+
+
+running the example under Windows
+---------------------------------
+
+
+In order to carry out PKtool simulations, the Visual C++ project must be interfaced
+with an available SystemC 2.3.1 library.
+
+Go to the "fir" subdirectory and double-click on the .vcproj file 
+to launch Visual C++ with the workspace file. 
+
+
+1. Display the project Property Pages by selecting 'Properties...' from 
+   the Project menu. 
+
+
+2. From the C/C++ tab, select the General properties and type the path to the 
+   SystemC header file in the text entry field labeled 'Additional include directories'.
+   (In application with SystemC 2.3.1 provided by Accelera, this path  might appear as:
+    'YourSystemCReleaseFolder\src'). 
+   
+   IMPORTANT:
+   The path to the PKtool header file is already set (../../../../src); it must not be modified or deleted.
+
+   
+
+3. From the Linker tab, select the General properties and type the path to 
+   the SystemC library in the 'Additional Library Directories:' box.
+   (In application with SystemC 2.3.1 provided by Accelera, this path might appear 
+    as: 'YourSystemCReleaseFolder\msvc80\systemc\debug')
+   
+   IMPORTANT:
+   The path to the PKtool library is already set (..\..\..\..\msvc\PKtool\Debug); it must not be modified or deleted.
+
+
+
+4. Click OK
+
+Select 'Build <example>.exe' under the Build menu or press F7 to build the 
+example executable.
+
+
+
+

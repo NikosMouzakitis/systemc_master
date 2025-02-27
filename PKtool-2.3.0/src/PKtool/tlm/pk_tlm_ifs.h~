@@ -1,0 +1,222 @@
+/***********************************************************************
+
+Copyright (C) 2004 - 2010 by Giovanni B. Vece
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along
+with this program; if not, write to the Free Software Foundation, Inc.,
+51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+************************************************************************/
+
+/***********************************************************************
+
+
+ Original Author: Giovanni B. Vece
+
+ Affiliation: Università Politecnica delle Marche (Italy)
+
+
+************************************************************************/
+
+
+#ifndef PK_TLM_IFS_H
+#define PK_TLM_IFS_H
+
+
+#include "PKtool/power_models/power_model_b.h"
+
+
+namespace pk_tlm
+{
+
+ //forward declaration
+
+ template <unsigned int, typename TYPES, int
+  #if !(defined SYSTEMC_VERSION & SYSTEMC_VERSION <= 20050714)
+            ,sc_core::sc_port_policy POL
+  #endif
+           >  class tlm_initiator_socket_aug;
+ 
+
+
+// ----------------------------------------------------------------------------
+//  STRUCT : pk_tlm_fwport_wrap
+// ----------------------------------------------------------------------------
+
+
+template <unsigned int BUSWIDTH = 32,
+	       typename TYPES = tlm::tlm_base_protocol_types, 
+		   int N = 1
+#if !(defined SYSTEMC_VERSION & SYSTEMC_VERSION <= 20050714)
+          ,sc_core::sc_port_policy POL = sc_core::SC_ONE_OR_MORE_BOUND
+#endif
+          > 
+ class pk_tlm_fwport_wrap : public tlm::tlm_fw_transport_if<TYPES>
+ {
+
+  template <unsigned int, typename TYPES_, int
+  #if !(defined SYSTEMC_VERSION & SYSTEMC_VERSION <= 20050714)
+            , sc_core::sc_port_policy 
+  #endif
+           >  friend class tlm_initiator_socket_aug;
+
+
+  typedef tlm::tlm_fw_transport_if<TYPES> FW_IF_;
+
+  typedef sc_core::sc_port<FW_IF_, N 
+	        #if !(defined SYSTEMC_VERSION & SYSTEMC_VERSION <= 20050714)
+                                ,POL
+            #endif
+							   > port_type;
+
+
+  pk_tlm_fwport_wrap( port_type& p, pk_TLMfc_data& d ): socket_port(p), fc_data(d)
+  { }
+ 
+
+  public:
+
+
+  void b_transport(typename TYPES::tlm_payload_type& trans, sc_core::sc_time& t) 
+  {
+   if(fc_data.TLMfc_on[PK_B_TRANS])
+   {
+    ++fc_data.TLMfc_calls[PK_B_TRANS];
+    fc_data.TLMfc_est[PK_B_TRANS] +=  fc_data.TLMfc_pm[PK_B_TRANS]->b_trans_estim(trans, t);
+   }
+   return socket_port->b_transport(trans, t);
+  }
+
+  tlm::tlm_sync_enum nb_transport_fw(typename TYPES::tlm_payload_type& trans, 
+	                                 typename TYPES::tlm_phase_type& phase, 
+	                                 sc_core::sc_time& t)
+  {
+   tlm::tlm_sync_enum status = socket_port->nb_transport_fw(trans, phase, t); 
+   if(fc_data.TLMfc_on[PK_NB_FW_TRANS])
+   {
+    ++fc_data.TLMfc_calls[PK_NB_FW_TRANS];
+    fc_data.TLMfc_est[PK_NB_FW_TRANS] +=  fc_data.TLMfc_pm[PK_NB_FW_TRANS]->nb_transfw_estim(trans, phase, t, status);  
+   }
+   
+   return status;
+  }
+
+
+  bool get_direct_mem_ptr(typename TYPES::tlm_payload_type& trans, 
+	                      tlm::tlm_dmi&  dmi_data)
+  {
+   if(fc_data.TLMfc_on[PK_FW_DIR_MEM_IF])
+   {
+    ++fc_data.TLMfc_calls[PK_FW_DIR_MEM_IF];
+    fc_data.TLMfc_est[PK_FW_DIR_MEM_IF] +=  fc_data.TLMfc_pm[PK_FW_DIR_MEM_IF]->get_dirmem_estim(trans, dmi_data);
+   }
+   return socket_port->get_direct_mem_ptr(trans, dmi_data);
+  }
+
+  unsigned transport_dbg( typename TYPES::tlm_payload_type& trans )
+  {
+   return socket_port->transport_dbg(trans);
+  }
+
+
+  private:
+
+  port_type&  socket_port;
+  pk_TLMfc_data&  fc_data;
+ 
+
+ };  
+
+
+
+
+ //forward declaration
+
+ template <unsigned int, typename TYPES, int
+  #if !(defined SYSTEMC_VERSION & SYSTEMC_VERSION <= 20050714)
+            ,sc_core::sc_port_policy POL
+  #endif
+           >  class tlm_target_socket_aug;
+
+
+
+// ----------------------------------------------------------------------------
+//  STRUCT : pk_tlm_bwport_wrap
+// ----------------------------------------------------------------------------
+
+template <unsigned int BUSWIDTH = 32,
+	      typename TYPES = tlm::tlm_base_protocol_types, 
+		  int N = 1
+#if !(defined SYSTEMC_VERSION & SYSTEMC_VERSION <= 20050714)
+          ,sc_core::sc_port_policy POL = sc_core::SC_ONE_OR_MORE_BOUND
+#endif
+          > 
+ class pk_tlm_bwport_wrap : public tlm::tlm_bw_transport_if<TYPES>
+ {
+
+  template <unsigned int, typename TYPES_, int
+  #if !(defined SYSTEMC_VERSION & SYSTEMC_VERSION <= 20050714)
+            , sc_core::sc_port_policy 
+  #endif
+           >  friend class tlm_target_socket_aug;
+
+
+  typedef tlm::tlm_bw_transport_if<TYPES> BW_IF_;
+
+  typedef sc_core::sc_port<BW_IF_, N 
+	        #if !(defined SYSTEMC_VERSION & SYSTEMC_VERSION <= 20050714)
+                                ,POL
+            #endif
+							   > port_type;   
+
+
+  pk_tlm_bwport_wrap( port_type& p, pk_TLMfc_data& d ): socket_port(p), fc_data(d)
+  { }
+ 
+
+  public:
+
+  tlm::tlm_sync_enum nb_transport_bw(typename TYPES::tlm_payload_type& trans, 
+	                                 typename TYPES::tlm_phase_type& phase, 
+	                                 sc_core::sc_time& t)
+  {
+   tlm::tlm_sync_enum status socket_port->nb_transport_bw(trans, phase, t);
+   if(fc_data.TLMfc_on[PK_NB_BW_TRANS])
+   {
+    ++fc_data.TLMfc_calls[PK_NB_BW_TRANS];
+    fc_data.TLMfc_est[PK_NB_BW_TRANS] +=  fc_data.TLMfc_pm[PK_NB_BW_TRANS]->nb_transbw_estim(trans, phase, t, status);  
+   }
+   return status;
+  }
+
+  void invalidate_direct_mem_ptr(sc_dt::uint64 start_range,
+                                 sc_dt::uint64 end_range)
+  {
+   if(fc_data.TLMfc_on[PK_BW_DIR_MEM_IF])
+   {
+    ++fc_data.TLMfc_calls[PK_BW_DIR_MEM_IF];
+    fc_data.TLMfc_est[PK_BW_DIR_MEM_IF] +=  fc_data.TLMfc_pm[PK_BW_DIR_MEM_IF]->inv_dirmem_estim(start_range, end_range);
+   }
+   return socket_port->nb_transport_bw(start_range, end_range);
+  }
+
+  private:
+  
+  port_type&  socket_port;
+  pk_TLMfc_data&  fc_data;
+
+ };  
+
+}   //pk_tlm
+
+
+#endif
+

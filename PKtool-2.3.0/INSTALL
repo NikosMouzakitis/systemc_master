@@ -1,0 +1,312 @@
+                INSTALL NOTES FOR PKtool Release 2.3.0
+                ----------------------------------------
+
+Contents:
+
+         1. Installation Notes for Unix
+
+         2. Installation Notes for Windows
+
+
+
+
+1. Installation Notes for Unix
+----------------------------------------------
+
+
+
+Sources for Compilers and Related Tools
+=======================================
+
+To build, install, and use PKtool on Unix platforms, you need the
+following tools:
+
+  1. GNU C++ compiler:
+     PKtool has been tested with the following Unix-like platforms:
+        - Cygwin with GNU C++ compiler versions gcc-4.5.3 
+          
+
+  2. GNU Make
+  
+  3. SystemC 2.3.1 release provided by Accelera (downloadable from http://www.accellera.org/)
+
+
+
+
+
+Basic PKtool Installation steps
+================================
+
+
+
+  1. Change to the top level directory (PKtool-2.3.0)
+
+
+  2. Make sure Makefile-local contains reasonable values for your system:
+      
+    - the variable  CXX  contains the compiler command name.If you have 
+      only one gcc/g++ compiler the values can be g++, otherwise, you 
+      must specificy the complete name and/or complete absolute path. 
+      See the examples below:
+
+         CXX=g++
+         CXX=g++-4.2
+         CXX=/usr/bin/g++-4.2
+
+
+    - the variable  LINK  contains the linker command name, used for building 
+      examples and user projects. If you have only one gcc/g++ compiler the 
+      values can be g++, otherwise, you must specificy the complete name 
+      and/or complete absolute path. 
+      See the examples below:
+
+         LINK=g++
+         LINK=g++-4.2
+         LINK=/usr/bin/g++-4.2 
+
+
+    - the variable  SYSTEMC_PATH  indicates the path to the top level directory of the SystemC release. 
+	  You can set this variable by typing the explicit path or through an existing shell variable, if present. 
+      See the examples below:
+
+         SYSTEMC_PATH=/usr/local/systemc-2.3.1
+         SYSTEMC_PATH=$(SYSTEMC)
+
+
+
+    - the variable  SYSTEMC_TARGET_ARCH  contains the system arch value given 
+      during systemc installation (e.g. linux, linux64, cygwin...). This variable 
+	  should be set such that $YSTEMC_PATH/lib-SYSTEMC_TARGET_ARCH is a directory containing 
+	  the SystemC library.
+	  You can set this variable by typing the correct string or or through an existing shell 
+	  variable, if present. See the examples below:
+
+         SYSTEMC_TARGET_ARCH=linux
+         SYSTEMC_TARGET_ARCH=cygwin
+         SYSTEMC_TARGET_ARCH=$(TARGET_ARCH)
+
+
+
+    - the variable  OPT_FLAGS contains optimization compiler flags. For a 
+      faster executable the  -O3  is suggested; if you would run the 
+      executable with a profiler or a debugger, you must set the  -g  value. 
+      Anyway, we recommend to use the same systemc optimization option ('-g' if 
+      'make debug' , '-O3' if 'make opt' or 'make' during systemc installation).
+      See the examples below:
+
+         OPT_FLAGS=-O3
+         OPT_FLAGS=-g
+
+
+    - the variable  PKTOOL_PATH  indicates the directory where the PKtool library
+      will be installed. You can set this variable by typing  the 
+      absolute path or through contatenation of other variables.
+      See the examples below:
+
+         PKTOOL_PATH=/usr/local/PKtool_2.3.0/objdir
+		 PKTOOL_PATH=/cygdrive/c/Users/Desktop/PKtool_2.3.0/objdir
+         PKTOOL_PATH=$(PKTOOL)/objdir
+		 
+	    IMPORTANT: do not set this variable using a relative path; this could cause
+	    mistakes in the building process. Use always an absolute path.
+
+
+    - the variable  OBJ_PATH  contains the relative path of the PKtool building 
+      directory. Intermediate files will be collected there. By default, this variable
+      is already assigned to the pre-existing PKtool package subfolder 'tmpdir'. 
+	  Further actions are not necessary on this variable.
+         
+         OBJ_PATH=./tmpdir
+
+
+
+  3. Compile the library:
+	  
+     type `make' or `make lib' for library compiling
+	  
+     type `make clean' if you want to delete intermediate files
+	  
+
+
+  4. Install the library:
+     
+     make sure you have created the target directory indicated in 
+     PKTOOL_PATH before installing the library.
+     
+     make sure that you have writing privileges in PKTOOL_PATH.
+     
+     type `make install' for library installing.
+     
+	 
+	 
+  5. To uninstall the library (this operation is necessary to re-build the PKtool library with new settings)
+    
+	
+	type `make clear' to delete intermediate files and library
+	
+	type `make uninstall'
+	
+    after that, if you want to re-build the PKtool library repeat the steps 3-4.
+
+ 
+  Running examples 
+  =================
+
+  The `examples' directory contains the makefiles and project files to run 
+  illustrative examples under Unix platforms. 
+  
+  The directory 'examples/PKtool/sysc' includes two examples related to 
+  basic PKtool applications: 'square_input' and 'fir'. For running these examples, 
+  go to the specific example directory and see the instructions reported in the 
+  README file.
+  
+  The directory 'examples/PKtool/tlm' includes two examples related to PKtool 
+  transactio-level applications 'at_2_phase' and 'p2p/HierarchicalSocket'. 
+  For running these examples, see the instructions reported in the README file 
+  located in 'examples/PKtool/tlm'.
+  
+
+
+2. Installation Notes for Windows
+---------------------------------
+
+This PKtool release includes project and workspace files for Visual C++. 
+You can use these files to build the PKtool library and a set of 
+application examples. 
+
+This release has been tested on Visual C++ versions 2008, running on Windows 7.
+
+
+MS Visual C++ 2008 Express Edition
+----------------------------------
+The top level release directory contains two subdirectories: 
+'msvc' and 'examples'.
+
+The 'msvc' directory contains the project and workspace files to
+create the PKtool library. Double-click on the 'PKtool.vcproj'
+file to launch Visual C++ 2008 with the workspace file. 
+At this point, the project must be interfaced with an available SystemC 2.3.1 library:
+
+1. Display the project Property Pages by selecting 'Properties...' from 
+   the Project menu. 
+
+2. From the C/C++ tab, select the General properties and add the path to the 
+   SystemC header file in the text entry field labeled'Additional include directories'
+   (In application with SystemC 2.3.1 provided by Accelera, this path 
+   might appear as: 'YourSystemCInstallFolder\src'). 
+   
+   IMPORTANT:
+   The path to the PKtool header file is already set (..\..\src); it must not be modified or deleted.
+
+3.  To enable transaction level power analysis in compliance with the SystemC/TLM 2.0 framework, 
+    it is necessary to uncomment the macro PK_TLM_ENABLED defined in the header file 
+	'pk_settings.h' inside the directory src/PKtool/kernel.
+
+
+4. Click OK
+
+Select `Build PKtool' under the Build menu or press F7 to build
+`PKtool.lib'.
+
+
+Running examples 
+=================
+
+The `examples' directory contains the project and workspace files to run 
+illustrative examples under Windows platforms. 
+  
+The directory 'examples/PKtool/sysc' includes three examples related to 
+basic PKtool applications: 'square_input', 'fir' and 'pipe'.
+The directory 'examples/PKtool/tlm' includes two examples related to PKtool 
+transactio-level applications 'at_2_phase' and 'p2p/HierarchicalSocket'. 
+ 
+For running an example related to basic or transaction-level applications, go to the specific 
+example directory and double-click on the .vcproj file to launch Visual C++ workspace. 
+At this point, the project must be interfaced with an available SystemC 2.3.1 library:
+
+
+1. Display the project Property Pages by selecting 'Properties...' from 
+   the Project menu. 
+
+
+2. From the C/C++ tab, select the General properties and type the path to the 
+   SystemC header file in the text entry field labeled 'Additional include directories'.
+   (In application with SystemC 2.3.1 provided by Accelera, this path  might appear as:
+    'YourSystemCReleaseFolder\src'). 
+
+   IMPORTANT:
+   The path to the PKtool header file is already set (../../../../src) ; it must not be modified or deleted.
+
+ 
+
+4. From the Linker tab, select the General properties and type the path to 
+   the SystemC library in the 'Additional Library Directories:' box.
+   (In application with SystemC 2.3.1 provided by Accelera, this path might appear 
+    as: 'YourSystemCReleaseFolder\msvc80\systemc\debug')
+
+   IMPORTANT:
+   The path to the PKtool library is already set (..\..\..\..\msvc\PKtool\Debug); it must not be modified or deleted.
+
+
+5. Click OK
+
+Select 'Build <example>.exe' under the Build menu or press F7 to build the 
+example executable.
+
+Creating PKtool Applications
+-----------------------------
+
+The steps are the same for creating an ordinary SystemC application with,
+in addition, specific actions for interfacing with PKtool library. 
+
+1. Start Visual Studio. From the Start Page select New Project and Win32 
+   Console Project. Type the project name and select a suitable location 
+   then click OK.
+
+2. Select the Application Settings page of the Win32 Application Wizard 
+   and make sure the 'Empty project' box is ticked. Click 'Finish' to 
+   complete the wizard.
+   
+3. Add new/existing C++ files to the project and edit code.
+
+4. Display the project Property Pages by selecting 'Properties...' from 
+   the Project menu. 
+   
+5. From the C/C++ tab, select the General properties and set 
+   'Detect 64-bit Portability Issues' to No
+
+6. From the C/C++ tab, select the Language properties and set 
+   'Enable Run-Time Type Info' to Yes
+
+7. From the C/C++ tab, select the Command Line properties and add /vmg
+   to the 'Additional Options:' box.
+
+8. From the Linker tab, select the Input properties and type 'systemc.lib' 
+   and 'PKtool.lib' in the 'Additional Dependencies' box.
+
+9. Click OK
+
+
+Also make sure that the compiler and linker can find the SystemC and PKtool
+header file and library file. 
+
+1. Display the project Property Pages by selecting 'Properties...' from 
+   the Project menu. 
+  
+2. From the C/C++ tab, select the General properties and type the paths to the 
+   SystemC and PKtool header files in the text entry field labeled 'Additional include 
+   directories'. In application with SystemC 2.3.1 provided by Accelera, the SystemC header 
+   might appear as: 'YourSystemCReleaseFolder\src'; PKtool header might appear as:
+  'YourPKtoolInstallFolder\src'. 
+   
+
+3. From the Linker tab, select the General properties and type the paths to 
+   the SystemC and PKtool libraries in the 'Additional Library Directories:' box.   
+   These paths might appear as:'YourSystemCReleaseFolder\msvc80\systemc\debug'  
+   and 'YourPKtoolReleaseFolder\msvc\PKtool\debug'  
+   
+
+9. Click OK
+  
+
+

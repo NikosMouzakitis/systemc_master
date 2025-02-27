@@ -1,0 +1,97 @@
+# Makefile-targets
+
+default: $(TARGET)
+
+all: lib
+
+lib: $(TARGET)
+
+library: lib
+
+
+$(OBJ_PATH)/%.d : ./src/%.cpp
+	@echo;echo depending $<  ... ;
+	@$(MKDIR) -p $(dir $@) ;
+	$(CXX) $(CFLAGS) -MM -MF $@ -MQ $(<:%.cpp=%.o) -MQ $@ $< ;
+
+$(OBJ_PATH)/%.o: ./src/%.cpp
+	@echo;echo compiling $< ... ;
+	@$(MKDIR) -p $(dir $@) ;
+	$(CXX) $(CFLAGS) -o $@ -c $< ;
+
+
+$(TARGET): $(SRCS:./src/%.cpp=$(OBJ_PATH)/%.o)
+	@echo; echo creating/updating $@ ... ;
+	@$(MKDIR) -p $(dir $@) ;
+	$(AR) rc $@ $+ ;
+	@echo ;
+
+
+
+clear: clean
+	@echo CLEAR target:  deleting  $(TARGET)  files ... ;
+	@rm -f $(TARGET) ;
+
+clean:
+	@echo CLEAN target:  deleting  *.d *.o  files ... ;
+	@rm -f $(SRCS:./src/%.cpp=$(OBJ_PATH)/%.d) $(SRCS:./src/%.cpp=$(OBJ_PATH)/%.o) ;
+	@rm -rf $(OBJ_PATH)/* ;
+
+
+
+install: install-base install-header install-lib
+	@echo target INSTALLED !! ;
+
+install-base:
+	@echo INSTALL-BASE ...
+	@$(MKDIR) -p $(TARGET_PATH) ;
+	@for x in $(INSTALL_BASE_FILES); do \
+			if test -d $$x ; then\
+				$(CP) -frp $$x $(TARGET_PATH);\
+			fi;\
+			if test -f $$x ; then\
+				$(CP) -fp $$x $(TARGET_PATH);\
+			fi;\
+		done;
+
+install-header:
+	@echo INSTALL-HDR ... ;
+	@$(MKDIR) -p $(TARGET_PATH)/include ;
+	@for X in $(INSTALL_HEADER_PATTERN); do \
+		 cd src; \
+		 for Y in $(HDRS_PATH); do \
+			 $(MKDIR) -p $(TARGET_PATH)/include/$$Y ; \
+			 $(CP) -pf $$Y/$$X $(TARGET_PATH)/include/$$Y ; \
+		 done; \
+		 cd .. ; \
+	 done; 
+	
+install-lib:
+	@echo INSTALL-LIB ...
+	@$(MKDIR) -p $(TARGET_PATH)/lib ;
+	@$(CP) -R ./lib/* $(TARGET_PATH)/lib ;
+	
+
+
+uninstall: uninstall-base uninstall-header uninstall-lib
+	@echo target UNINSTALLED !! ; echo;
+
+uninstall-base:
+	@echo UNINSTALL-BASE ... ;
+	@for x in $(INSTALL_BASE_FILES); do \
+			if test -d $$x ; then\
+				$(RM) -rf $(TARGET_PATH)/$$x;\
+			fi;\
+			if test -f $$x ; then\
+				$(RM) -f $(TARGET_PATH)/$$x;\
+			fi;\
+		done;
+
+uninstall-header:
+	@echo UNINSTALL-HDR ... ;
+	@$(RM) -rf $(TARGET_PATH)/include ;
+
+uninstall-lib:
+	@echo UNINSTALL-LIB ...
+	@$(RM) -rf $(TARGET_PATH)/lib ;
+

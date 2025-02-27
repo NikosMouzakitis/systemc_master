@@ -1,0 +1,132 @@
+/***********************************************************************
+
+Copyright (C) 2004 - 2015 by Giovanni B. Vece
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along
+with this program; if not, write to the Free Software Foundation, Inc.,
+51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+************************************************************************/
+
+/***********************************************************************
+
+
+ Original Author: Giovanni B. Vece
+
+ Affiliation: Università Politecnica delle Marche (Italy)
+
+
+************************************************************************/
+
+#ifndef PK_SETTINGS_H
+#define PK_SETTINGS_H
+
+#include "PKtool/utils/pk_macros.h"
+
+
+
+
+/**** EXTENSION TRANSACTION LEVEL POWER ANALYSIS  *****/  
+
+// uncomment/comment the below macro for enabling/disabling the PKtool extension 
+// for SystemC/TLM applications
+
+//#define PK_ENABLE_TLM   
+
+
+
+
+
+
+/**** OPERATOR-BASED POWER MODELS  *****/  
+
+#ifndef PK_ENABLE_TLM   //operator-based power models are currently disabled if TLM power models are enabled
+
+// uncomment/comment the below macro for enabling/disabling operator-based power models
+
+#define PK_ENABLE_OPMODELS
+
+#endif
+
+
+
+
+
+
+
+// settings related to power models
+
+
+const int PK_MAX_MODEL_NB = 60;  
+
+const int PK_DEFAULT_MODEL = 0;
+
+
+
+// settings related to power_modules
+
+const int PK_MAX_POWER_MODULE_NB = 50; 
+const int PK_MAX_STATE_NB = 20;
+
+
+// settings related to the bit number representing C++ native types
+
+const int PK_INT_BIT_NUMBER = sizeof(int)*8;
+const int PK_UNSIGNED_BIT_NUMBER = sizeof(unsigned)*8;
+const int PK_SHORT_BIT_NUMBER = sizeof(short int)*8;
+const int PK_LONG_BIT_NUMBER = sizeof(long int)*8;
+const int PK_ULONG_BIT_NUMBER = sizeof(unsigned long )*8;
+const int PK_USHORT_BIT_NUMBER = sizeof(unsigned short)*8;
+const int PK_FLOAT_BIT_NUMBER = sizeof(float)*8;
+const int PK_DOUBLE_BIT_NUMBER = sizeof(double)*8;
+
+const int PK_FLOAT_INTEGER_BITS = PK_FLOAT_BIT_NUMBER / 2;
+const int PK_DOUBLE_INTEGER_BITS = PK_DOUBLE_BIT_NUMBER / 2;
+
+
+// settings related to power_models
+
+
+
+
+
+PK_USED_ENERGY_LIB( pk_default_energy_lib )
+
+
+PK_USED_COMM_LIB( pk_default_comm_lib)
+
+
+#ifdef PK_ENABLE_TLM
+
+const int PK_MAX_SOCKET_AUG_PER_MODULE = 10; 
+
+#endif
+
+
+// other settings 
+
+const int PK_DELTA_INITMAX_DEFAULT = 3;
+
+const int PK_STABILIZATION_DELTAS = 5;   
+
+const int PK_MAX_AUG_DATA = 10;   
+
+const int PK_SIZE_AUG_ARRAY = 200;  // future implementation
+
+
+
+// settings related to the used SystemC version  (default version is 2.2) 
+// comment the macro below for enabling SystemC version 2.1  
+
+ #define PK_SYSC_22 
+                   
+
+#endif

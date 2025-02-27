@@ -1,0 +1,17 @@
+   Configuration file    power_module: test
+
+monitored power_module (Y/N)= Y
+
+enable window menu (Y/N)= Y
+
+
+
+estimation type: energy
+model library selected: pk_default_energy_lib
+available power models: 9
+related indexes: 0 1 2 3 4 21 22 23 41 
+
+power model: model_3  numeric index: 3
+coefficient (units) = 3
+power supply (V) = 5
+capacitance (nF) = 3

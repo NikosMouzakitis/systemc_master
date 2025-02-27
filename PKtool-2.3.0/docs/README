@@ -1,0 +1,19 @@
+
+ 
+This directory reports the documentation referred to PKtool 2.3.0,
+consisting in the following pdf files:
+
+- LICENSE: the license file that describes rights and responsiblities for using PKtool.
+
+- PKtool overview: an introductory report on PKtool environment.
+
+- User Manual: a detailed documentation that illustrates PKtool components and application 
+  modalities for basic power analysis. 
+
+- PKtool-TLM documentation: a specific documentation on PKtool application for 
+  transaction-level power analysis
+
+
+
+
+    

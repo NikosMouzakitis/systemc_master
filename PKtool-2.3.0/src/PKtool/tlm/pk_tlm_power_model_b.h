@@ -1,0 +1,100 @@
+/***********************************************************************
+
+Copyright (C) 2004 - 2015 by Giovanni B. Vece
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along
+with this program; if not, write to the Free Software Foundation, Inc.,
+51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+************************************************************************/
+
+/***********************************************************************
+
+
+ Original Author: Giovanni B. Vece
+
+ Affiliation: Università Politecnica delle Marche (Italy)
+
+
+************************************************************************/
+
+
+#ifndef TLM_POWER_MODEL_B_H
+#define TLM_POWER_MODEL_B_H
+
+
+#include "PKtool/power_models/power_model_b.h"
+
+
+namespace tlm
+{
+ class tlm_generic_payload;
+ class tlm_phase;
+ #ifndef __TLM_FW_BW_IFS_H__
+ enum tlm_sync_enum { TLM_ACCEPTED, TLM_UPDATED, TLM_COMPLETED };
+ #endif
+ class tlm_dmi;
+}
+
+namespace pk_tlm
+{
+
+
+ // ----------------------------------------------------------------------------
+ //  CLASS : tlm_power_model_b  
+ // ----------------------------------------------------------------------------
+
+ class tlm_power_model_b: public pk_core::energy_power_model   
+ {
+  public:
+
+  tlm_power_model_b(pk_core::pk_kernel_impl& p): energy_power_model(p) 
+  {
+   for(int i=0; i<pk_tlmfc_nb; ++i)  TLMfc_calls[i] = 0;
+  };
+
+  virtual double b_trans_estim(const tlm::tlm_generic_payload&, 
+    	                       const sc_core::sc_time&)
+  {return 0;};
+
+  virtual double nb_transfw_estim(const tlm::tlm_generic_payload&,
+ 	                          const tlm::tlm_phase&,
+ 	                          const sc_core::sc_time&,
+				  const tlm::tlm_sync_enum)
+  {return 0;};
+
+  virtual double nb_transbw_estim(const tlm::tlm_generic_payload&,
+	                          const tlm::tlm_phase&,
+	                          const sc_core::sc_time&,
+				  const tlm::tlm_sync_enum)
+  {return 0;};
+
+  virtual double get_dirmem_estim(const tlm::tlm_generic_payload&,
+	                              const tlm::tlm_dmi& )
+  {return 0;};
+  
+ 
+  virtual double inv_dirmem_estim(const sc_dt::uint64&,
+	                              const sc_dt::uint64& )  
+  
+  {return 0;};
+
+  
+  protected:
+
+  int TLMfc_calls[pk_tlmfc_nb];
+
+ };
+
+}  //pk_tlm
+
+#endif
+

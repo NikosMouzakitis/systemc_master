@@ -1,0 +1,16 @@
+   Configuration file    power_module: stage2
+
+monitored power_module (Y/N)= Y
+
+enable window menu (Y/N)= Y
+
+
+
+estimation type: commutations
+model library selected: pk_default_comm_lib
+available power models: 5
+related indexes: 0 1 2 3 4 
+
+
+power model: model_2  numeric index: 2
+coefficient = 3

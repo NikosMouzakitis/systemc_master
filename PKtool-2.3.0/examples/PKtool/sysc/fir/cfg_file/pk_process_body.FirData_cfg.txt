@@ -1,0 +1,23 @@
+   Configuration file    power_module: process_body.FirData
+
+monitored power_module (Y/N)= Y
+
+enable window menu (Y/N)= Y
+
+
+
+estimation type: energy
+model library selected: pk_default_energy_lib
+available power models: 9
+related indexes: 0 1 2 3 4 21 22 23 41
+
+
+power model: operators_1  numeric index: 41
+available operators:  + - * /
+
+number of enabled operators = 2
+enabled operators = + * 
+operator +
+energy consumption (nJ units) = 2
+operator *
+energy consumption (nJ units) = 10

@@ -1,0 +1,20 @@
+# Makefile-local
+
+# ATTENTION: The starting values assigned to the variables below are 
+# illustrative only. In order to build PKtool, you have to set these variables 
+# according to your system.
+
+CXX:=g++-5
+LINK:=g++-5
+
+SYSTEMC_PATH:=/home/nicko/work/systemc-2.3.1
+
+SYSTEMC_TARGET_ARCH:=linux64
+
+OPT_DEBUG:=-O3
+
+PKTOOL_PATH:=/usr/local/PKtool_2.3.0/objdir
+
+OBJ_PATH:= ./tmpdir
+
+

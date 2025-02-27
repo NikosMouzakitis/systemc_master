@@ -1,0 +1,87 @@
+README for pipe
+===================================================================
+
+
+This example shows the application of PKtool onto a SystemC description 
+called "pipe", which has been taken from the examples provided by the 
+SystemC 2.3.1 release. More precisely, the pipe example is located in the release directory 
+examples\sysc\pipe. In such directory it is possible to find a readme 
+file reporting a complete documentation of the pipe system and its functionality. 
+
+PKtool is applied onto the three modules constituting the system, i.e. 
+stage_1, stage_2 and stage_3. Each of such modules is replaced by a matching 
+power_module in the sc_main function. The power_module classes are defined in the
+header file "power_modules.h". The estimation type is set in terms of total commutations. 
+The simulation results will be reported in three separate text files called
+"pk_stage1_res", "pk_stage2_res" and "pk_stage3_res", respectively related to stage1, 
+stage2 and stage3.
+
+The user must select the power model to be applied at the beginning of a PKtool simulation, 
+through a specification procedure based on two reading options.
+The option 1 requires to specify the model data via a window interaction.  
+The option 2 allows to read the model data from a pre-existent configuration file,
+which must be formatted in suitable way.
+A More detailed description of this procedure can be found in the PKtool user manual.  
+An example of configuration file is reported in the directory "cfg_file"; this file can 
+be used for an immediate running of PKtool simulations through the reading option 2. 
+For this purpose, the user should do a copy of the file in the pipe top directory, where the 
+project files are located. 
+The proposed configuration is based on the power_model model_2, which provides estimations
+proportional to the sum of the total commutations of system signals. For this purpose, the main 
+signals of stage_1, stage_2 and stage_3 have been converted into augmented counterparts in order to 
+extract their commutations.
+
+
+
+
+RUNNING THE EXAMPLE 
+===================
+
+At the present time, this example has been tested only under Windows platforms
+
+
+running the example under Windows
+---------------------------------
+
+
+In order to carry out PKtool simulations, the Visual C++ project must be interfaced
+with an available SystemC 2.3.1 library.
+
+Go to the "pipe" subdirectory and double-click on the .vcproj file 
+to launch Visual C++ with the workspace file. 
+
+
+1. Display the project Property Pages by selecting 'Properties...' from 
+   the Project menu. 
+
+
+2. From the C/C++ tab, select the General properties and type the path to the 
+   SystemC header file in the text entry field labeled 'Additional include directories'.
+   (In application with SystemC 2.3.1 provided by Accelera, this path  might appear as:
+    'YourSystemCReleaseFolder\src').
+
+   IMPORTANT: 
+   The path to the PKtool header file is already set (../../../../src); it must not be modified or deleted.
+
+
+3. From the Linker tab, select the General properties and type the path to 
+   the SystemC library in the 'Additional Library Directories:' box.
+   (In application with SystemC 2.3.1 provided by Accelera, this path might appear 
+    as: 'YourSystemCReleaseFolder\msvc80\systemc\debug')
+
+   IMPORTANT: 
+   The path to the PKtool library is already set (..\..\..\..\msvc\PKtool\Debug); it must not be modified or deleted.
+
+
+4. Click OK
+
+Select 'Build <example>.exe' under the Build menu or press F7 to build the 
+example executable.
+
+
+
+
+
+
+
+

@@ -1,0 +1,121 @@
+README for square_input
+===================================================================
+
+
+This example shows the application of PKtool onto a SystemC description 
+called "square_input". The examined system is modelled through an sc_module with 
+three input ports ("data", "standby", and "clock") and two output ports ("out_data" and "overflow"). 
+The main process calculates the square of the unsigned values sent to the data port, 
+and writes the results onto the out_data port. This process is sinchronous 
+with the positive edges of the clock port. If the input value is greater than 15, 
+an overflow condition occurs, which is communicated on the overflow port. When the 
+standby port is set to true, the system enters into a standby state and stops its 
+normal activities. The standby state terminates after three clock cycles; then,
+the system is able to resume its functionality.
+In the sc_main function a square_input module is instanced, together with a
+testbench and a display module. The testbench generates the values 
+sent to the data port, whereas the display module writes the results in a text 
+file called "out_file". 
+The default configuration is based on the application of a unique power model, valid 
+for all the operative conditions. However, it is also possible to set a configuration based 
+on three power states, by uncommenting the define-macro "POWER_STATE_ON" reported in the file 
+"power_module.h". This will enable an alternative implementation related to a 
+three-power-state configuration. In this case, the functionality of square_input is 
+divided into three operative phases: normal working, standby condition and overflow 
+condition. Such phases are associated respectively to the power states "normal_st", 
+"standby_st" and "overflow_st".
+
+PKtool is applied on the square_input module instanced in the sc_main function, where 
+the original module is replaced by a matching power_module. The power_module class is 
+defined in the file "power_module.h". The estimation type is set in terms of energy. 
+The simulation results will be reported in a text file called "pk_squin_res".
+The user must select the power model to be applied at the beginning of a PKtool 
+simulation, through a specification procedure based on different reading options.
+The option 1 requires to specify the model data via a window interaction.  
+The option 2 allows to read the model data from a pre-existent configuration file,
+which must be formatted in suitable way. 
+A More detailed description of this procedure can be found in the PKtool user manual.  
+An example of configuration file is reported in the directory "cfg_file"; this file can be 
+used for an immediate running of PKtool simulations through the reading option 2. For this 
+purpose, the user should do a copy of this file in the top square_input directory, where 
+the project files are located. The proposed configuration is based on the power_model 
+model_3, which provides energy estimations based on the commutations due to system signals.
+For this purpose, the main signals of square_input have been converted into augmented 
+counterparts in order to extract their commutations.
+
+This example shows also how PKtool can be applied on a module created dynamically. 
+For this purpose, a square_input module is defined dynamically inside a wrapper module. 
+The class definition of the wrapper is reported in the file power_module.h. A wrapper module is 
+instanced in the sc_main, so to include in PKtool simulations also the internal square_input power_module. 
+
+
+
+
+
+RUNNING THE EXAMPLE 
+===================
+
+
+
+running the example under Linux
+---------------------------------
+    
+1. set suitable values in the 'Makefile-local' file for the variables
+   CXX, LINK, SYSTEMC_PATH, SYSTEMC_TARGET_ARCH, PKTOOL_PATH.
+   For this purpose, follow the rules reported in the INSTALL file 
+   located in the PKtool top level directory, at the section: 
+   'Installation Notes for Unix' -> 'Basic PKtool Installation steps'-> point 2;
+   
+2. Change to the  directory PKtool-2.3.0/examples/PKtool/sysc/square_input.
+   Make sure that you have writing privileges for this directory.
+     
+3. type `make' for compiling the example;
+     
+4. run the example typing './square_input' or 'square_input'.
+	  
+ Note: the example will work with the PKtool library installed.
+
+
+
+running the example under Windows
+---------------------------------
+
+
+In order to carry out PKtool simulations, the Visual C++ project must be interfaced
+with an available SystemC 2.3.1 library.
+
+Go to the "square_input" subdirectory and double-click on the .vcproj file 
+to launch Visual C++ with the workspace file. 
+
+
+1. Display the project Property Pages by selecting 'Properties...' from 
+   the Project menu. 
+
+2. From the C/C++ tab, select the General properties and type the path to the 
+   SystemC header file in the text entry field labeled 'Additional include directories'.
+   (In application with SystemC 2.3.1 provided by Accelera, this path  might appear as:
+    'YourSystemCReleaseFolder\src'). 
+   
+   IMPORTANT:
+   The path to the PKtool header file is already set (../../../../src); it must not be modified or deleted.
+   
+
+3. From the Linker tab, select the General properties and type the path to 
+   the SystemC library in the 'Additional Library Directories:' box.
+   (In application with SystemC 2.3.1 provided by Accelera, this path might appear 
+    as: 'YourSystemCReleaseFolder\msvc80\systemc\debug')
+   
+   IMPORTANT:
+   The path to the PKtool library is already set(..\..\..\..\msvc\PKtool\Debug); it must not be modified or deleted.
+
+
+4. Click OK
+
+Select 'Build <example>.exe' under the Build menu or press F7 to build the 
+example executable.
+
+
+
+
+
+

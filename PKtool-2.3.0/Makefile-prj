@@ -1,0 +1,100 @@
+# Makefile-prj
+
+
+SRCS_KERNEL:= 
+SRCS_KERNEL+= pk_kernel_impl.cpp
+SRCS_KERNEL+= pk_read_cfg_data.cpp
+SRCS_KERNEL+= pk_sensitive.cpp
+SRCS_KERNEL+= power_kernel.cpp
+SRCS_KERNEL+= power_module_fcs.cpp
+SRCS_KERNEL+= power_module_b.cpp
+
+SRCS_POWER_MODELS:= 
+SRCS_POWER_MODELS+= pk_estimation.cpp
+SRCS_POWER_MODELS+= pk_model_creator.cpp
+SRCS_POWER_MODELS+= pk_model_libs.cpp
+SRCS_POWER_MODELS+= power_model_b.cpp
+SRCS_POWER_MODELS+= pk_model_operators_1.cpp
+SRCS_POWER_MODELS+= pk_model_operators_2.cpp
+SRCS_POWER_MODELS+= pk_model_operators_3.cpp
+
+SRCS_TYPES_AUG:= 
+SRCS_TYPES_AUG+= pk_aug_if.cpp
+SRCS_TYPES_AUG+= pk_compute_comm_fcs.cpp
+SRCS_TYPES_AUG+= pk_aug_data.cpp
+
+SRCS_UTILS:= 
+SRCS_UTILS+= pk_iostream.cpp
+SRCS_UTILS+= pk_report.cpp
+
+SRCS_TLM:= 
+SRCS_TLM+= pk_tlm_ns.cpp
+
+
+SRCS:= 
+SRCS+= $(addprefix ./src/PKtool/kernel/,$(SRCS_KERNEL))
+SRCS+= $(addprefix ./src/PKtool/power_models/,$(SRCS_POWER_MODELS))
+SRCS+= $(addprefix ./src/PKtool/types_aug/,$(SRCS_TYPES_AUG))
+SRCS+= $(addprefix ./src/PKtool/utils/,$(SRCS_UTILS))
+SRCS+= $(addprefix ./src/PKtool/tlm/,$(SRCS_TLM))
+
+
+
+HDRS_PATH:= 
+HDRS_PATH+= ./
+HDRS_PATH+= ./PKtool/kernel
+HDRS_PATH+= ./PKtool/power_models
+HDRS_PATH+= ./PKtool/types_aug
+HDRS_PATH+= ./PKtool/utils
+HDRS_PATH+= ./PKtool/tlm
+
+
+
+INSTALL_BASE_FILES:= 
+INSTALL_BASE_FILES+= README
+INSTALL_BASE_FILES+= LICENSE
+INSTALL_BASE_FILES+= INSTALL
+INSTALL_BASE_FILES+= AUTHORS
+INSTALL_BASE_FILES+= CONTACTS
+INSTALL_BASE_FILES+= docs
+INSTALL_BASE_FILES+= examples
+INSTALL_BASE_FILES+= Makefile
+INSTALL_BASE_FILES+= Makefile-system
+INSTALL_BASE_FILES+= Makefile-local
+INSTALL_BASE_FILES+= Makefile-prj
+INSTALL_BASE_FILES+= Makefile-targets
+
+#add other files here if needed
+
+INSTALL_HEADER_PATTERN:= 
+INSTALL_HEADER_PATTERN+= *.h
+
+
+# compiler options:
+#    -I* options
+#    -D* options
+#    -g -O3 -O2 ... optimization options
+#    -W* options
+#    -f* options
+#    other compiler options 
+IFLAGS:= 
+DFLAGS:= 
+OPT_FLAGS:= 
+WFLAGS:= 
+FFLAGS:=
+CFLAGS:=
+
+WFLAGS+= -Wall
+WFLAGS+= -Wno-pmf-conversions
+WFLAGS+= -Wno-deprecated
+#FFLAGS+= -fno-volatile
+FFLAGS+= -fno-stack-check 
+
+# linker options
+#    -L* options
+#    -l* options
+#    other linker options
+LDPATH:= 
+LDLIBS:= 
+LFLAGS:=
+

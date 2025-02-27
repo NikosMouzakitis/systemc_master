@@ -1,0 +1,13 @@
+
+
+
+1) Adaptation to Accelera SystemC 2.3.x releases.
+
+2) Now it is possible to perform basic PKtool applications with the capabilities 
+   for transaction-level power analysis enabled.
+
+2) Several improvements have been realized in documentation and application examples.
+
+  
+   
+

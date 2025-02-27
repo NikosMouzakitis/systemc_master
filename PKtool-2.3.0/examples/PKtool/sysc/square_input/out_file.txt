@@ -1,0 +1,56 @@
+TIME:  0 s
+ input = 0          result = 0
+
+
+TIME:  10 ns
+ input = 250          result = 62500
+
+
+TIME:  60 ns
+ input = 255          result = 65025
+
+
+TIME:  110 ns
+  standby 
+
+
+TIME:  160 ns
+  standby 
+
+
+TIME:  210 ns
+  standby 
+
+
+TIME:  260 ns
+ input = 260          result = overflow
+
+
+TIME:  310 ns
+ input = 265          result = overflow
+
+
+TIME:  360 ns
+ input = 252          result = 63504
+
+
+TIME:  410 ns
+  standby 
+
+
+TIME:  460 ns
+  standby 
+
+
+TIME:  510 ns
+  standby 
+
+
+TIME:  560 ns
+ input = 257          result = overflow
+
+
+TIME:  610 ns
+ input = 262          result = overflow
+
+

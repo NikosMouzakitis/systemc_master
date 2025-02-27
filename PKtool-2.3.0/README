@@ -1,0 +1,56 @@
+                PKtool Class Library (Rel. 2.3.0)
+                =======================================
+
+-------------------------------------------------------------------------------
+                              
+
+1. This is the 2.3.0 release of the PKtool Class Library.
+   This release includes resources for transaction level power analysis. These 
+   capabilities are targeted to applications on systems modelled through the TLM 2.0 
+   extension of SystemC. 
+   To enable transaction level power analysis, it is necessary to uncomment the macro 
+   PK_TLM_ENABLED defined in the header file 'pk_settings.h' inside the directory 
+   src/PKtool/kernel. After doing that, build the PKtool library. 
+   
+
+    
+2. Some bugs present in the previous releases have been fixed.
+   Nonetheless, further verification and testing phases should be carried out to 
+   make more stable and efficient the future PKtool releases.
+	
+	
+3. This release is supported on the following platforms for which it has been 
+   well tested:
+    
+   
+  o Windows 7 SP1 (WoW64)  
+   - MS Visual C++ 2008 Express Edition and SystemC 2.3.1
+    
+  o Windows 7 SP1 (WoW64), (Cygwin 1.7.17)
+   - GNU C++ compiler versions gcc-4.9.2 
+  
+
+
+-------------------------------------------------------------------------------
+
+Licensing and Copyright
+
+   See the LICENSE file to determine your rights and responsiblities 
+   for using PKtool. 
+
+User Documentation
+
+   You can find the documentation for this release in the docs directory.
+
+Installation
+
+   See the separate INSTALL file; it provides system
+   information and installation instructions.
+
+Additional information
+
+   PKtool has a web site at
+
+     http://pktool.sourceforge.net/
+     
+   

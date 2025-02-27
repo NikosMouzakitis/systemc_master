@@ -1,0 +1,91 @@
+README for PKtool/TLM examples
+===================================================================
+
+
+This directory contains examples of PKtool transaction-level power analysis on descriptions realized 
+through the SystemC TLM-2.0 core. These descriptions are derived from application examples 
+included in SystemC/TLM releases.
+In the present PKtool release two transaction-level application examples are provided, i.e. at_2_phase 
+and p2p/HierarchicalSocket. The original implementation code and a comprehensive documentation 
+of these systems can be found in their native SystemC/TLM releases. More precisely at_2_phase in the
+directory "examples/tlm/at_2_phase" of SystemC 2.3.1, whereas p2p/HierarchicalSocket in the directory
+"unit_test/tlm/p2p/HierarchicalSocket" of the transaction-level release TLM 2.0.1.
+
+IMPORTANT: 
+In order to configure PKtool for running these examples, it is necessary to uncomment the macro 
+PK_TLM_ENABLED defined in the header file 'pk_settings.h' inside the directory src/PKtool/kernel. 
+After that, if the PKtool library has been previously built, it must be uninstalled and re-built. 
+For this purpose, follow the rules reported in the INSTALL file located in the PKtool top level directory, 
+at the section: 'Installation Notes for Unix'-> 'Basic PKtool Installation steps'-> point 5;
+
+
+
+
+RUNNING THE EXAMPLES 
+===================
+
+running the examples under Unix
+---------------------------------
+
+1. Go to the "build-unix" directory common to all the PKtool/TLM examples; the relative path of this 
+   directory is "examples/PKtool/tlm/build-unix". Open the file "Makefile.config"
+
+2. set suitable values for the variables SYSTEMC_PATH, SYSTEMC_TARGET_ARCH, PKTOOL_PATH.
+   For this purpose, follow the rules reported in the INSTALL file 
+   located in the PKtool top level directory, at the section: 
+   'Installation Notes for Unix'-> 'Basic PKtool Installation steps'-> point 2;
+
+3. change to the "build-unix" directory of the example you want ro run (in the case of at_2_phase,
+   the relative path of this directory is "examples/PKtool/tlm/at_2_phase/build-unix").
+   Make sure that you have writing privileges for this directory.   
+
+4. type `make' for compiling the example;
+     
+5. run the example; 
+   for at_2_phase type './at_2_phase' or 'at_2_phase',
+   for p2p/HierarchicalSocket type './hierarchical_socket' or 'hierarchical_socket'
+   
+   
+
+running the examples under Windows
+---------------------------------
+
+
+Go to the "build-msvc" directory of the example you want ro run (in the case of at_2_phase,
+the relative path of this directory is "examples/PKtool/tlm/at_2_phase/build-msvc"). 
+Double-click on the .vcproj file to launch Visual C++ with the workspace file. 
+
+
+1. Display the project Property Pages by selecting 'Properties...' from 
+   the Project menu. 
+
+
+2. From the C/C++ tab, select the General properties and type the path to the 
+   SystemC header file in the text entry field labeled 'Additional include directories'.
+   This path  might appear as: 'YourSystemCReleaseFolder\src'. 
+   
+   IMPORTANT:
+   The path to the PKtool header file is already set; it must not be modified or deleted.
+   
+
+3. From the Linker tab, select the General properties and type the path to 
+   the SystemC library in the 'Additional Library Directories:' box.
+   This path might appear: 'YourSystemCReleaseFolder\msvc80\SystemC\Debug'.  
+   
+   IMPORTANT:
+   The path to the PKtool library is already set; it must not be modified or deleted.
+
+
+4. Click OK
+
+
+Select 'Build <example>.exe' under the Build menu or press F7 to build the 
+example executable.
+
+
+
+
+
+
+
+
