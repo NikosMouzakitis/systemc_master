@@ -40,7 +40,7 @@ SC_MODULE(can_node)
 		
 		if(access_req_send) {
 			
-			std::cout << "@ " << sc_time_stamp() << " " << name() << "checking if access granded finised" <<  std::endl;
+//			std::cout << "@ " << sc_time_stamp() << " " << name() << "checking if access granded finised" <<  std::endl;
 			if(access_granded.read() == '1') {
 				cout << access_granded.read() <<endl;
 			} else {
@@ -54,7 +54,6 @@ SC_MODULE(can_node)
 		if( ( (time > 0) && (time%15)==0) && ( strcmp(name(),"node1")==0 ) && (bus_tx.read() == 0) )
 		{
 			std::cout << "@ " << sc_time_stamp() << "  TX: " << name() << std::endl;
-			std::cout << "need to TX: " << name() << std::endl;
 			access_req.write('1');
 			tx_id.write(0x13);
 			tx_data.write(0xabcd);
@@ -65,8 +64,9 @@ SC_MODULE(can_node)
 	
 	void receive(void)
 	{
-//		std::cout << "@ " << sc_time_stamp() << "  RX: " << name() << std::endl;
-		
+		if(bus_tx.read() == 0)
+			return;	
+		std::cout << "@ " << sc_time_stamp() << "  RX: " << name() << " Received <-------ID: " << rx_id << " data: " << rx_data << std::endl;
 	}
 	
 	void init(void)
@@ -155,7 +155,7 @@ SC_MODULE(can_bus)
 	
 	void entry_func(void)
 	{
-		std::cout << "bus activated" << std::endl;
+	//	std::cout << "bus activated" << std::endl;
 		if(!ongoing_reception && !ongoing_transmission && (static_cast<int>(sc_time_stamp().to_double()) != 0) )
 		{
 			for(int i =0; i < nodes; i++) {
@@ -178,13 +178,11 @@ SC_MODULE(can_bus)
 			//ack the arbitration winner to send data.
 			//winner[] 's index hold the winner on the arbitration.
 			perform_arbitration();
-			cout << "winner" << " " << winner << endl;
 			access_granded[winner].write('1');
 			ongoing_reception = 1;
 		}
 
 		if(ongoing_reception) {	
-			cout << "bus tx now" << endl;
 			bus_tx.write('1');
 			tx_data.write(sd[winner].data);
 			tx_id.write(sd[winner].id);
@@ -199,7 +197,6 @@ SC_MODULE(can_bus)
 			ongoing_reception = 0;
 			ongoing_transmission = 1;
 		} else if(ongoing_transmission) {
-			cout << "last" << endl;	
 			tx_data.write(0x0);
 			tx_id.write(0x0);
 			bus_tx.write('0');	
