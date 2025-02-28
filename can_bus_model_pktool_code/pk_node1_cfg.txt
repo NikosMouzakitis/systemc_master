@@ -1,0 +1,15 @@
+   Configuration file    power_module: node1
+
+monitored power_module (Y/N)= Y
+
+enable window menu (Y/N)= Y
+
+
+
+estimation type: energy
+model library selected: pk_default_energy_lib
+available power models: 9
+related indexes: 0 1 2 3 4 21 22 23 41 
+
+power model: fixed_power  numeric index: 1
+power (mW) = 200
