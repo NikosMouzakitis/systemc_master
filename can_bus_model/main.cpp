@@ -35,25 +35,38 @@ SC_MODULE(can_node)
 	//statistics
 	int total_tx=0;
 	int success_tx = 0;
+	int failed_tx=0;	
 
 	void transmit(void)
 	{
 		while(true)
 		{
-			std::cout << "["<<name()<<"]" << "@ " << sc_time_stamp() << "  TX_SUCCES: " << success_tx <<  "/ TX_TOTAL: " << total_tx << std::endl;
+
+			std::cout << "["<<name()<<"]" << "@ " << sc_time_stamp() << "  TX_SUCCES: " << success_tx <<  "/ TX_TOTAL: " << total_tx << "failedtxflag: " << failed_tx << std::endl;
 			int time = static_cast<int>(sc_time_stamp().to_double());
-			
+
 			if(access_req_send)
 			{
+				wait();
 				//check to see if granted.
-				if(access_granded.read() == 1)
+				if(access_granded.read() == 1) {
 					success_tx +=1;
-				tx_id.write(0x0);
-				tx_data.write(0x0);
-				access_req.write('0');
+					failed_tx = 0;
+					tx_id.write(0x0);
+					tx_data.write(0x0);
+					access_req.write('0');
+					access_req_send = 0;
+				} else {
+					tx_id.write(0x0);
+					tx_data.write(0x0);
+					access_req.write('0');
+					access_req_send = 0;
+					failed_tx=1;
+				}	
 			}
-
-			if( ( (time > 0) && (time%15)==0) &&(bus_tx.read() == 0) )
+			
+			//periodic transmission or retry from previous failure.
+			if( ( ((time > 0) && (time%23)==0) && (bus_tx.read() == 0)) || failed_tx)
 			//if( ( (time > 0) && (time%15)==0) && ( strcmp(name(),"node1")==0 ) && (bus_tx.read() == 0) )
 			{
 				std::cout << "["<<name()<<"]" << "@ " << sc_time_stamp() << "  TX: " << "request to transmit" << std::endl;
@@ -69,11 +82,11 @@ SC_MODULE(can_node)
 				}
 				access_req_send = 1;
 			}
-
 			
 			wait();
 		}
 	}
+
 	void receive(void)
 	{
 		while(true)
@@ -90,9 +103,10 @@ SC_MODULE(can_node)
 		tx_data.write(0x0);
 		access_req.write(0x0);
 	}
+
 	SC_CTOR(can_node)
 	{
-		std::cout << "can node created:\t" << name() << std::endl;
+		std::cout << "CAN node created:\t" << name() << std::endl;
 		SC_THREAD(transmit);
 		sensitive << clock.pos();
 		SC_THREAD(receive);
@@ -239,6 +253,10 @@ SC_MODULE(can_bus)
 				tx_data.write(0x0);
 				bus_tx.write('0');	
 				ongoing_transmission =0;
+				for(int i = 0; i < nodes; i++)
+					access_granded[i].write('0');
+
+
 			}
 
 			wait();
@@ -256,7 +274,7 @@ SC_MODULE(can_bus)
 
 int sc_main(int argc, char *argv[])
 {
-	sc_clock clk("clk",10,SC_NS); 
+	sc_clock clk("clk",5,SC_NS); 
 
 	//initialization of nodes.
 	can_node n1("node1");
