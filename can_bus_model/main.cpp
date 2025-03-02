@@ -3,8 +3,8 @@
 using namespace std;
 
 
-#define nodes 2
-#define SIM_TIME  400
+#define nodes 3
+#define SIM_TIME  10000
 
 typedef sc_uint<1> bit;
 
@@ -18,7 +18,6 @@ SC_MODULE(can_node)
 {
 
 	sc_in_clk		clock;
-
 	sc_in<bit>		access_granded;
 	//reception from bus.
 	sc_in<sc_uint<32>>	rx_id;
@@ -42,13 +41,14 @@ SC_MODULE(can_node)
 		while(true)
 		{
 
-			std::cout << "["<<name()<<"]" << "@ " << sc_time_stamp() << "  TX_SUCCES: " << success_tx <<  "/ TX_TOTAL: " << total_tx << "failedtxflag: " << failed_tx << std::endl;
+			std::cout << "["<<name()<<"]" << "@ " << sc_time_stamp() << "  TX(success/total) " << std::dec <<  success_tx <<  "/" << total_tx << std::hex << std::endl;
 			int time = static_cast<int>(sc_time_stamp().to_double());
 
 			if(access_req_send)
 			{
 				wait();
 				//check to see if granted.
+				//cout << name() << "check if granted request" << endl;
 				if(access_granded.read() == 1) {
 					success_tx +=1;
 					failed_tx = 0;
@@ -64,11 +64,19 @@ SC_MODULE(can_node)
 					failed_tx=1;
 				}	
 			}
-			
-			//periodic transmission or retry from previous failure.
-			if( ( ((time > 0) && (time%23)==0) && (bus_tx.read() == 0)) || failed_tx)
-			//if( ( (time > 0) && (time%15)==0) && ( strcmp(name(),"node1")==0 ) && (bus_tx.read() == 0) )
+
+			if( (((time > 0) && (time%15000)==0) && ( strcmp(name(),"node3")==0) && (bus_tx.read() == 0)) || (failed_tx && ( strcmp(name(),"node3")==0))) 
 			{
+				std::cout << "["<<name()<<"]" << "@ " << sc_time_stamp() << "  TX: " << "request to transmit" << std::endl;
+				access_req.write('1');
+				tx_id.write(0x123);
+				tx_data.write(0xcafebabe);
+				total_tx++;
+				access_req_send = 1;
+			} else if( ( ((time > 0) && ((time%12000)==0)) && (bus_tx.read() == 0)) || failed_tx)
+			{
+				cout << std::dec<<time <<std::hex << endl;
+				//periodic transmission or retry from previous failure.
 				std::cout << "["<<name()<<"]" << "@ " << sc_time_stamp() << "  TX: " << "request to transmit" << std::endl;
 				access_req.write('1');
 				if(strcmp(name(),"node1") == 0) { 
@@ -176,7 +184,7 @@ SC_MODULE(can_bus)
 				for(int i =0; i < nodes; i++) {
 					if(access_req[i].read() == 1) {
 						to_get[i] = 1;	
-						cout << "wanna send" << i << endl;
+					//	cout << "wanna send" << i << endl;
 						sd[i].id = rx_id[i].read();
 						sd[i].data = rx_data[i].read();
 						collision+=1;
@@ -200,11 +208,10 @@ SC_MODULE(can_bus)
 				if(!collision) {
 					std::cout <<  "[BUS-request]: NO-COLLISION"<< std::endl;
 					for(int i = 0; i < nodes; i++){
-						if(to_get[i] == 1)
+						if(access_req[i].read() == 1){
 							winner = i;
-							cout << "winner is " << i << endl;
-							cout << "winner is " << winner << endl;
 							break;
+						}
 					}
 					
 				} else {
@@ -222,7 +229,7 @@ SC_MODULE(can_bus)
 							}
 						}
 					}
-					cout << winner_id << " " << winner_idx << endl;	
+					//cout << winner_id << " " << winner_idx << endl;	
 					//ack winner
 					winner = winner_idx;
 				}
@@ -275,10 +282,10 @@ SC_MODULE(can_bus)
 int sc_main(int argc, char *argv[])
 {
 	sc_clock clk("clk",5,SC_NS); 
-
 	//initialization of nodes.
 	can_node n1("node1");
 	can_node n2("node2");
+	can_node n3("node3");
 	can_bus bus("can_bus1");	
 	
 	sc_signal<bit>		access_req_signal[nodes];
@@ -308,6 +315,19 @@ int sc_main(int argc, char *argv[])
 	n2.tx_data(rx_data_signal[1]);
 	n2.access_req(access_req_signal[1]);
 	n2.bus_tx(bus_tx_signal);
+
+	
+	//can node 3
+	n3.clock(clk);
+	n3.access_granded(access_granded_signal[2]);
+	n3.rx_id(tx_id_signal);
+	n3.rx_data(tx_data_signal);
+	n3.tx_id(rx_id_signal[2]);
+	n3.tx_data(rx_data_signal[2]);
+	n3.access_req(access_req_signal[2]);
+	n3.bus_tx(bus_tx_signal);
+	
+
 	//bus mapping 	
 	bus.clock(clk);
 	for(int i = 0; i < nodes; i++)
@@ -324,6 +344,7 @@ int sc_main(int argc, char *argv[])
 	//initialize signals
 	n1.init();
 	n2.init();
+	n3.init();
 	bus.init();
 	//create the waveform
 	sc_trace_file *tf = sc_create_vcd_trace_file("waveform");
