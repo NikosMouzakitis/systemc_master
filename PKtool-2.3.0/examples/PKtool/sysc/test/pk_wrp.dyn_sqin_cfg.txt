@@ -1,4 +1,0 @@
-   Configuration file    power_module: wrp.dyn_sqin
-
-monitored power_module (Y/N)= N
-

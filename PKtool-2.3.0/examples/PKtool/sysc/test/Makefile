@@ -64,7 +64,7 @@ $(TARGET): $(SRCS:%.cpp=%.o)
 	$(LINK) -o $@ $+ $(LFLAGS) ;
 
 clean:
-	rm a.out waveform.vcd
+	rm a.out waveform.vcd main.o
 view:
 	gtkwave waveform.vcd
 #-include $(SRCS:%.cpp=%.d)
