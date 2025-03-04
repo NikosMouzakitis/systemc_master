@@ -18,12 +18,20 @@ struct CAN_message
 SC_MODULE(can_node)
 {
 	simple_initiator_socket<can_node> tx_socket; // initiator socket for transmission on CAN Bus.
-//	simple_target_socket<can_node> rx_socket;    // target socket for receiving messages from the CAN Bus
+	simple_target_socket<can_node> rx_socket;    // target socket for receiving messages from the CAN Bus
 	int id;
 
-	SC_CTOR(can_node) : tx_socket("tx_socket")
+	SC_CTOR(can_node) : tx_socket("tx_socket"), rx_socket("rx_socket")
 	{
 		SC_THREAD(run);
+		rx_socket.register_b_transport(this, &can_node::b_transport);
+	}
+
+	//override b_transport()  for receiving broadcasted messages from can_bus module.
+	void b_transport(tlm_generic_payload& payload, sc_time& delay) {
+		// Read the data
+		CAN_message data = *reinterpret_cast<CAN_message*>(payload.get_data_ptr());
+		cout <<"RECEPTION <<--:: " <<  name() << " @ " << sc_time_stamp() << "Received: ID:" << std::hex << data.id << " data: " <<data.data << endl;
 	}
 
 	void run(void)
@@ -44,7 +52,7 @@ SC_MODULE(can_node)
 				payload.set_data_ptr(reinterpret_cast<unsigned char*>(&m));
 				payload.set_data_length(sizeof(CAN_message));
 				// Send the payload
-				cout << "@" << sc_time_stamp() << " " << name() << " TX id = " << std::hex << m.id << " data:" << m.data << endl;
+				cout << "@" << sc_time_stamp() << " " << name() << "(tries to access bus with TX) id = " << std::hex << m.id << " data:" << m.data << endl;
 				tx_socket->b_transport(payload, delay);
 				wait(sc_time(20,SC_NS));
 			} else if(strcmp(name(),"top.node2") == 0)
@@ -56,7 +64,7 @@ SC_MODULE(can_node)
 				payload.set_data_ptr(reinterpret_cast<unsigned char*>(&m));
 				payload.set_data_length(sizeof(CAN_message));
 				// Send the payload
-				cout << "@" << sc_time_stamp() << " " << name() << " TX id = " << std::hex << m.id << " data:" << m.data << endl;
+				cout << "@" << sc_time_stamp() << " " << name() << "(tries to access bus with TX) id = " << std::hex << m.id << " data:" << m.data << endl;
 				tx_socket->b_transport(payload, delay);
 				wait(sc_time(30,SC_NS));
 			} 
@@ -67,13 +75,16 @@ SC_MODULE(can_node)
 // can_bus module.
 SC_MODULE(can_bus)
 {
-	//simple_initiator_socket<can_bus> tx_soc	
+	//simple initiator socket for broadcasting CAN Bus messages.
+	simple_initiator_socket<can_bus> tx_socket[nodes];
 	// simple target socket for transmission on CAN bus.
 	simple_target_socket<can_bus> rx_socket[nodes];
 	
 	sc_event round_finished; //event to process received msgs.
 	std::vector<CAN_message> received_messages;
 	int pending_transfers = 0;
+
+	sc_time delay = SC_ZERO_TIME;
 
 	SC_CTOR(can_bus) 
 	{
@@ -114,10 +125,25 @@ SC_MODULE(can_bus)
 				win_id = msg.id;
 		}
 		
+
+		//broadcasts the message on the bus after arbitration.	
 		for(const auto& msg: received_messages) {
-			if(msg.id == win_id)
-				cout << name() << "[BUS reception]  id: " << std::hex << msg.id << " data: " <<msg.data << " at time " << sc_time_stamp() << endl;
+			if(msg.id == win_id) {
+//				cout << name() << "[BUS reception]  id: " << std::hex << msg.id << " data: " <<msg.data << " at time " << sc_time_stamp() << endl;
+				//broadcasting on CAN Bus.
+				tlm_generic_payload pl;
+				CAN_message cp = msg;
+				// Set up the payload
+				pl.set_command(TLM_WRITE_COMMAND);
+				pl.set_data_ptr(reinterpret_cast<unsigned char*>(&cp));
+				pl.set_data_length(sizeof(CAN_message));
+				for(int i = 0; i < nodes; i++)
+					tx_socket[i]->b_transport(pl,delay);
+			}
+						
 		}
+		
+
 
 		received_messages.clear(); //clear the buffer for next reception.
 		pending_transfers = 0;
@@ -132,6 +158,8 @@ SC_MODULE(Top) {
     SC_CTOR(Top) : n1("node1"), n2("node2"), b("bus") {
         n1.tx_socket.bind(b.rx_socket[0]);
         n2.tx_socket.bind(b.rx_socket[1]);
+	b.tx_socket[0].bind(n1.rx_socket);
+	b.tx_socket[1].bind(n2.rx_socket);
     }
 };
 
