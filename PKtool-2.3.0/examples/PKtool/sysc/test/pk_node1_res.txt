@@ -4,6 +4,6 @@
 
 overall simulation period: [0 - 400 ns]
 
-overall energy estimation: 1.2e-07 J
-average power estimation: 0.3 W
+overall energy estimation: 2.31e-07 J
+average power estimation: 0.5775 W
 
