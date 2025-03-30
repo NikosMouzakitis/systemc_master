@@ -2,8 +2,9 @@
 #include "mesh_router.h"
 #include "mesh_packet.h"
 
-const int MESH_SIZE = 3;
-#define TRAFFIC_INJECTION_RATE  200
+const int MESH_SIZE = 5;
+#define TRAFFIC_INJECTION_RATE 23
+#define SIMULATION_TIME	 600
 // Simple Processing Element (PE) for testing
 SC_MODULE(ProcessingElement) {
 
@@ -223,7 +224,7 @@ int sc_main(int argc, char* argv[]) {
 
 	// Start simulation
 	cout << "\n=== Starting Simulation ===" << endl;
-	sc_start(1000, SC_NS);
+	sc_start(SIMULATION_TIME, SC_NS);
 
 	// Cleanup
 	cout << "\n=== Cleaning Up ===" << endl;

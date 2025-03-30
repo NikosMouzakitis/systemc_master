@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import LogNorm
 from mpl_toolkits.mplot3d import Axes3D
-
+SIZE = 5
 def parse_noc_log(log_file):
     """Parse NoC simulation log into structured data"""
     data = []
@@ -54,7 +54,7 @@ def plot_path_heatmap(df):
     router_counts = df.groupby(['dest_x', 'dest_y']).size().reset_index(name='counts')
     
     # Create 3x3 grid
-    heatmap = np.zeros((3, 3))
+    heatmap = np.zeros((SIZE, SIZE))
     for _, row in router_counts.iterrows():
         heatmap[row['dest_y'], row['dest_x']] = row['counts']
     
@@ -63,8 +63,8 @@ def plot_path_heatmap(df):
     plt.colorbar(label='Packet Count')
     
     # Annotate each cell
-    for y in range(3):
-        for x in range(3):
+    for y in range(SIZE):
+        for x in range(SIZE):
             plt.text(x, y, f'{heatmap[y, x]:.0f}', 
                     ha='center', va='center', color='black')
     
