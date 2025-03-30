@@ -1,12 +1,14 @@
 #include "mesh_router.h"
 
-MeshRouter::MeshRouter(sc_module_name name, uint32_t x, uint32_t y,
-                       uint32_t mesh_size, uint32_t buf_depth) :
-	sc_module(name), x_pos(x), y_pos(y), mesh_size(mesh_size), buffer_depth(buf_depth),
-	in_north(nullptr), in_south(nullptr), in_east(nullptr), in_west(nullptr),
-	out_north(nullptr), out_south(nullptr), out_east(nullptr), out_west(nullptr)
+#define PE_ROUTER_DELAY 2
+#define ROUTER_ROUTER_DELAY 5
+
+
+MeshRouter::MeshRouter(sc_module_name name, uint32_t x, uint32_t y, uint32_t mesh_size, uint32_t buf_depth) :
+	sc_module(name), x_pos(x), y_pos(y), mesh_size(mesh_size), buffer_depth(buf_depth), in_north(nullptr), in_south(nullptr), in_east(nullptr), in_west(nullptr), out_north(nullptr), out_south(nullptr), out_east(nullptr), out_west(nullptr)
 {
-	// Create only needed ports
+	// Create only the needed and used ports for each 
+	// router based on its position of x and y.
 	if (y < mesh_size - 1) {
 		out_north = new sc_port<sc_fifo_out_if<MeshPacket>>();
 		in_north = new sc_port<sc_fifo_in_if<MeshPacket>>();
@@ -64,7 +66,11 @@ bool MeshRouter::write_port_conditional(sc_port<sc_fifo_out_if<MeshPacket>>* por
 
 
 void MeshRouter::pe_interface_process() {
+
     while (true) {
+
+        wait(PE_ROUTER_DELAY, SC_NS);
+
         // Handle incoming packets from PE
         if (in_pe->num_available() > 0) {
             MeshPacket pkt = in_pe->read();
@@ -82,15 +88,20 @@ void MeshRouter::pe_interface_process() {
                 cout << this->name() << " DELIVERED to PE @ " << sc_time_stamp() << endl;
             }
         }
-        wait(10, SC_NS);
     }
 }
+
 void MeshRouter::router_process() {
+
     while (true) {
+
+        // delay for router processing 
+        wait(ROUTER_ROUTER_DELAY, SC_NS);
+
         bool processed = false;
         MeshPacket packet;
 
-        // Check all input ports
+        // Check all input ports (unchanged)
         #define CHECK_PORT(port, dir) \
             if (port && (*port)->num_available() > 0) { \
                 packet = (*port)->read(); \
@@ -98,42 +109,39 @@ void MeshRouter::router_process() {
                 i_buffer.push(packet); \
                 processed = true; \
             }
-
         CHECK_PORT(in_north, NORTH)
         CHECK_PORT(in_south, SOUTH)
         CHECK_PORT(in_east, EAST)
         CHECK_PORT(in_west, WEST)
 
-        // Process buffers
+        // Process buffers, prioritizing the o_buffer
         if (!o_buffer.empty()) {
             route_packet(o_buffer.front());
             o_buffer.pop();
             processed = true;
-        } 
-        else if (!i_buffer.empty()) {
-            MeshPacket pkt = i_buffer.front();
-            if (pkt.dest_x == x_pos && pkt.dest_y == y_pos) {
-                // For local delivery, let pe_interface_process handle it
-                processed = true;
-            } else {
-                route_packet(pkt);
-                i_buffer.pop();
-                processed = true;
-            }
-        }
+        } else if (!i_buffer.empty()) {
+		MeshPacket pkt = i_buffer.front();
+		if (pkt.dest_x == x_pos && pkt.dest_y == y_pos) {
+                
+			// Local delivery - don't route, let pe_interface handle it
+			processed = true;
+		} else {
+			route_packet(pkt);
+			i_buffer.pop();
+			processed = true;
+		}
+	}
 
-        // Time management
+        
         if (processed) {
-            wait(SC_ZERO_TIME);
-        } else {
-            wait(10, SC_NS);
+            wait(SC_ZERO_TIME); // Yield to other processes
         }
     }
 }
 
 void MeshRouter::route_packet(const MeshPacket& packet) {
     MeshPacket routed = packet;
-    update_packet_hop(routed);
+//    update_packet_hop(routed);
 
     cout << this->name() << " ROUTING to (" << packet.dest_x 
          << "," << packet.dest_y << ") @ " << sc_time_stamp() << endl;

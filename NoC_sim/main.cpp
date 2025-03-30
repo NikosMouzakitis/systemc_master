@@ -3,8 +3,8 @@
 #include "mesh_packet.h"
 
 // Simple Processing Element (PE) for testing
-
 SC_MODULE(ProcessingElement) {
+
 	sc_port<sc_fifo_in_if<MeshPacket>> in_port;
 	sc_port<sc_fifo_out_if<MeshPacket>> out_port;
 	uint32_t x_pos, y_pos;
@@ -34,19 +34,41 @@ SC_MODULE(ProcessingElement) {
 			pkt.sequence = 0;
 			pkt.type = DATA_PACKET;
 			pkt.timestamp = sc_time_stamp().to_default_time_units();
-
+			pkt.payload.raw[0] = 0x00;
+			out_port->write(pkt);
+			cout << "PE(" << x_pos << "," << y_pos << ") sent packet " << pkt.sequence
+			     << " at " << sc_time_stamp() << endl;
+			wait(10, SC_NS);
+		}
+	
+		if(strcmp(this->name(),"PE_2_2") == 0) {
+			cout << this->name() << " sending test packet " << endl;
+			MeshPacket pkt;
+			pkt.source_x = x_pos;
+			pkt.source_y = y_pos;
+			pkt.dest_x = 0;
+			pkt.dest_y = 0;
+			pkt.sequence = 1;
+			pkt.type = DATA_PACKET;
+			pkt.timestamp = sc_time_stamp().to_default_time_units();
+			pkt.payload.raw[0] = 0x22;
 			out_port->write(pkt);
 			cout << "PE(" << x_pos << "," << y_pos << ") sent packet " << pkt.sequence
 			     << " at " << sc_time_stamp() << endl;
 			wait(10, SC_NS);
 		}
 
+
 		// Receive packets
 		while (true) {
 			MeshPacket pkt = in_port->read();
+			cout << "-----------------------------------------------------" << endl;
 			cout << "PE(" << x_pos << "," << y_pos << ") received packet "
 			     << pkt.sequence << " from (" << pkt.source_x
 			     << "," << pkt.source_y << ") at " << sc_time_stamp() << endl;
+			cout << "Raw[0] value: 0x" << std::hex <<  static_cast<int>(pkt.payload.raw[0]) << endl;
+			cout << "pkt's timestamp: " << std::dec <<  pkt.timestamp << endl;
+			cout << "-----------------------------------------------------" << endl;
 		}
 	}
 };
@@ -197,7 +219,7 @@ int sc_main(int argc, char* argv[]) {
 
 	// Cleanup
 	cout << "\n=== Cleaning Up ===" << endl;
-// Cleanup North-South channels
+	// Cleanup North-South channels
 	for (int x = 0; x < MESH_SIZE; x++) {
 		for (int y = 0; y < MESH_SIZE-1; y++) {
 			delete north_channels[x][y];
@@ -205,7 +227,7 @@ int sc_main(int argc, char* argv[]) {
 		}
 	}
 
-// Cleanup East-West channels
+	// Cleanup East-West channels
 	for (int y = 0; y < MESH_SIZE; y++) {
 		for (int x = 0; x < MESH_SIZE-1; x++) {
 			delete east_channels[x][y];
