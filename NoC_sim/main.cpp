@@ -2,6 +2,8 @@
 #include "mesh_router.h"
 #include "mesh_packet.h"
 
+const int MESH_SIZE = 3;
+#define TRAFFIC_INJECTION_RATE  200
 // Simple Processing Element (PE) for testing
 SC_MODULE(ProcessingElement) {
 
@@ -12,18 +14,43 @@ SC_MODULE(ProcessingElement) {
 	SC_CTOR(ProcessingElement) : x_pos(0), y_pos(0) {
 		
 		SC_THREAD(pe_process);
-		sensitive << in_port;
+		SC_THREAD(traffic_gen);
+		//sensitive << in_port;
 	}
 
 	void set_position(uint32_t x, uint32_t y) {
 		x_pos = x;
 		y_pos = y;
 	}
-
-	void pe_process() {
-
-		// Generate a test packet
 	
+	//traffic generation within' the Network on Chip.	
+	void traffic_gen(void) {
+		static uint32_t seq_cnt = 0;
+		while (true) {
+			wait(TRAFFIC_INJECTION_RATE, SC_NS);  // Inject a packet every 100ns (adjust as needed)
+
+			MeshPacket pkt;
+			pkt.source_x = x_pos;
+			pkt.source_y = y_pos;
+			pkt.sequence = seq_cnt++;
+			// Uniform random destination (excluding self)
+			do {
+				pkt.dest_x = rand() % MESH_SIZE;
+				pkt.dest_y = rand() % MESH_SIZE;
+			} while (pkt.dest_x == x_pos && pkt.dest_y == y_pos);
+			//timestamp it.
+			pkt.timestamp = sc_time_stamp();
+			//forwarding packet to router.
+			out_port->write(pkt);
+			cout << this->name() << " sent packet to (" << pkt.dest_x << "," << pkt.dest_y << ") @ " << sc_time_stamp() << endl;
+		}
+	}	
+
+	//reception process of processing element.
+	void pe_process() {
+		
+		/*	
+		// Generate a test packet
 		if(strcmp(this->name(),"PE_0_0") == 0) {
 			cout << this->name() << " sending test packet " << endl;
 			MeshPacket pkt;
@@ -40,32 +67,15 @@ SC_MODULE(ProcessingElement) {
 			     << " at " << sc_time_stamp() << endl;
 			wait(10, SC_NS);
 		}
-	
-		if(strcmp(this->name(),"PE_2_2") == 0) {
-			cout << this->name() << " sending test packet " << endl;
-			MeshPacket pkt;
-			pkt.source_x = x_pos;
-			pkt.source_y = y_pos;
-			pkt.dest_x = 0;
-			pkt.dest_y = 0;
-			pkt.sequence = 1;
-			pkt.type = DATA_PACKET;
-			pkt.timestamp = sc_time_stamp().to_default_time_units();
-			pkt.payload.raw[0] = 0x22;
-			out_port->write(pkt);
-			cout << "PE(" << x_pos << "," << y_pos << ") sent packet " << pkt.sequence
-			     << " at " << sc_time_stamp() << endl;
-			wait(10, SC_NS);
-		}
-
-
+		*/
 		// Receive packets
 		while (true) {
 			MeshPacket pkt = in_port->read();
+			sc_time latency = sc_time_stamp() - pkt.timestamp;
 			cout << "-----------------------------------------------------" << endl;
-			cout << "PE(" << x_pos << "," << y_pos << ") received packet "
+			cout << "PE(" << x_pos << "," << y_pos << ") received packet sequence: "
 			     << pkt.sequence << " from (" << pkt.source_x
-			     << "," << pkt.source_y << ") at " << sc_time_stamp() << endl;
+			     << "," << pkt.source_y << ") at " << sc_time_stamp() << " PACKET's LATENCY:  " << latency << endl;
 			cout << "Raw[0] value: 0x" << std::hex <<  static_cast<int>(pkt.payload.raw[0]) << endl;
 			cout << "pkt's timestamp: " << std::dec <<  pkt.timestamp << endl;
 			cout << "-----------------------------------------------------" << endl;
@@ -74,8 +84,6 @@ SC_MODULE(ProcessingElement) {
 };
 
 int sc_main(int argc, char* argv[]) {
-	// Create 2x2 mesh
-	const int MESH_SIZE = 3;
 	MeshRouter* routers[MESH_SIZE][MESH_SIZE];
 	ProcessingElement* pes[MESH_SIZE][MESH_SIZE];
 
@@ -215,7 +223,7 @@ int sc_main(int argc, char* argv[]) {
 
 	// Start simulation
 	cout << "\n=== Starting Simulation ===" << endl;
-	sc_start(200, SC_NS);
+	sc_start(1000, SC_NS);
 
 	// Cleanup
 	cout << "\n=== Cleaning Up ===" << endl;

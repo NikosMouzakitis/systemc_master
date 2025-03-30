@@ -179,5 +179,5 @@ void MeshRouter::route_packet(const MeshPacket& packet) {
 }
 
 void MeshRouter::update_packet_hop(MeshPacket& packet) {
-	packet.timestamp = sc_time_stamp().to_default_time_units();
+	packet.timestamp = sc_time_stamp();
 }

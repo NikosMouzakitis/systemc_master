@@ -1,4 +1,12 @@
 SystemC Network-on-Chip (NoC) Analysis
+
+
+* contents of noc\_log.txt
+```
+./a.out | grep LATENCY > noc_log.txt
+```
+
+
 Overview
 This SystemC implementation models a 2x2 mesh Network-on-Chip (NoC) with routers and processing elements (PEs). The system demonstrates packet-based communication between PEs through a mesh network of routers.
 

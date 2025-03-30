@@ -22,7 +22,7 @@ struct MeshPacket {
     uint32_t dest_y;
     uint32_t sequence;
     MeshPacketType type;
-    uint32_t timestamp;
+    sc_time timestamp;
     uint8_t priority;
     uint16_t checksum;
     
