@@ -50,107 +50,124 @@ bool MeshRouter::read_port_conditional(sc_port<sc_fifo_in_if<MeshPacket>>* port,
     packet = fifo_if->read();
     return true;
 }
-
-bool MeshRouter::write_port_conditional(sc_port<sc_fifo_out_if<MeshPacket>>* port, const MeshPacket& packet) {
+bool MeshRouter::write_port_conditional(sc_port<sc_fifo_out_if<MeshPacket>>* port, 
+                                      const MeshPacket& packet) {
     if (!port || !port->get_interface()) return false;
-    sc_fifo_out_if<MeshPacket>* fifo_if = port->operator->();
-    if (fifo_if->num_free() == 0) return false;
-    fifo_if->write(packet);
-    return true;
+    if ((*port)->num_free() > 0) {
+        (*port)->write(packet);
+        cout << this->name() << " forwarded via " << port->name() 
+             << " @ " << sc_time_stamp() << endl;
+        return true;
+    }
+    return false;
 }
+
 
 void MeshRouter::pe_interface_process() {
     while (true) {
-        // Check PE input
+        // Handle incoming packets from PE
         if (in_pe->num_available() > 0) {
             MeshPacket pkt = in_pe->read();
-            i_buffer.push(pkt);
-            i_buffer_event.notify();
+            cout << this->name() << " received from PE @ " << sc_time_stamp() << endl;
+            o_buffer.push(pkt);
+            o_buffer_event.notify();
         }
 
-        // Check output to PE
-        if (!o_buffer.empty() && out_pe->num_free() > 0) {
-            out_pe->write(o_buffer.front());
-            o_buffer.pop();
+        // Handle outgoing packets to PE
+        if (!i_buffer.empty() && out_pe->num_free() > 0) {
+            MeshPacket& pkt = i_buffer.front();
+            if (pkt.dest_x == x_pos && pkt.dest_y == y_pos) {
+                out_pe->write(pkt);
+                i_buffer.pop();
+                cout << this->name() << " DELIVERED to PE @ " << sc_time_stamp() << endl;
+            }
         }
         wait(10, SC_NS);
     }
 }
-
 void MeshRouter::router_process() {
-	while (true) {
-		MeshPacket packet;
+    while (true) {
+        bool processed = false;
+        MeshPacket packet;
 
-		// Check directional ports
-		if (in_north && read_port_conditional(in_north, packet)) {
-			i_buffer.push(packet);
-			i_buffer_event.notify();
-		}
+        // Check all input ports
+        #define CHECK_PORT(port, dir) \
+            if (port && (*port)->num_available() > 0) { \
+                packet = (*port)->read(); \
+                cout << this->name() << " received from " #dir " @ " << sc_time_stamp() << endl; \
+                i_buffer.push(packet); \
+                processed = true; \
+            }
 
-		if (in_south && read_port_conditional(in_south, packet)) {
-			i_buffer.push(packet);
-			i_buffer_event.notify();
-		}
+        CHECK_PORT(in_north, NORTH)
+        CHECK_PORT(in_south, SOUTH)
+        CHECK_PORT(in_east, EAST)
+        CHECK_PORT(in_west, WEST)
 
-		if (in_east && read_port_conditional(in_east, packet)) {
-			i_buffer.push(packet);
-			i_buffer_event.notify();
-		}
+        // Process buffers
+        if (!o_buffer.empty()) {
+            route_packet(o_buffer.front());
+            o_buffer.pop();
+            processed = true;
+        } 
+        else if (!i_buffer.empty()) {
+            MeshPacket pkt = i_buffer.front();
+            if (pkt.dest_x == x_pos && pkt.dest_y == y_pos) {
+                // For local delivery, let pe_interface_process handle it
+                processed = true;
+            } else {
+                route_packet(pkt);
+                i_buffer.pop();
+                processed = true;
+            }
+        }
 
-		if (in_west && read_port_conditional(in_west, packet)) {
-			i_buffer.push(packet);
-			i_buffer_event.notify();
-		}
-
-		// Process PE input
-		if (read_port_conditional(&in_pe, packet)) {
-			i_buffer.push(packet);
-			i_buffer_event.notify();
-		}
-
-		if (!i_buffer.empty()) {
-			MeshPacket pkt = i_buffer.front();
-			i_buffer.pop();
-			route_packet(pkt);
-		}
-		else {
-			wait(i_buffer_event | o_buffer_event);
-		}
-	}
+        // Time management
+        if (processed) {
+            wait(SC_ZERO_TIME);
+        } else {
+            wait(10, SC_NS);
+        }
+    }
 }
 
 void MeshRouter::route_packet(const MeshPacket& packet) {
-	MeshPacket routed_pkt = packet;
-	update_packet_hop(routed_pkt);
+    MeshPacket routed = packet;
+    update_packet_hop(routed);
 
-	if (packet.dest_x == x_pos && packet.dest_y == y_pos) {
-		o_buffer.push(routed_pkt);
-		o_buffer_event.notify();
-	}
-	else if (packet.dest_x != x_pos) {
-		if (packet.dest_x > x_pos && out_east) {
-			if (!write_port_conditional(out_east, routed_pkt)) {
-				o_buffer.push(routed_pkt);
-			}
-		}
-		else if (out_west) {
-			if (!write_port_conditional(out_west, routed_pkt)) {
-				o_buffer.push(routed_pkt);
-			}
-		}
-	}
-	else {
-		if (packet.dest_y > y_pos && out_north) {
-			if (!write_port_conditional(out_north, routed_pkt)) {
-				o_buffer.push(routed_pkt);
-			}
-		}
-		else if (out_south) {
-			if (!write_port_conditional(out_south, routed_pkt)) {
-				o_buffer.push(routed_pkt);
-			}
-		}
-	}
+    cout << this->name() << " ROUTING to (" << packet.dest_x 
+         << "," << packet.dest_y << ") @ " << sc_time_stamp() << endl;
+
+    if (packet.dest_x == x_pos && packet.dest_y == y_pos) {
+        // Local delivery
+        i_buffer.push(routed);
+        return;
+    }
+
+    if (packet.dest_x != x_pos) { // X-dimension first
+        if (packet.dest_x > x_pos && out_east) {
+            if (!write_port_conditional(out_east, routed)) {
+                o_buffer.push(routed);
+            }
+        } 
+        else if (out_west) {
+            if (!write_port_conditional(out_west, routed)) {
+                o_buffer.push(routed);
+            }
+        }
+    } 
+    else { // Y-dimension
+        if (packet.dest_y > y_pos && out_north) {
+            if (!write_port_conditional(out_north, routed)) {
+                o_buffer.push(routed);
+            }
+        } 
+        else if (out_south) {
+            if (!write_port_conditional(out_south, routed)) {
+                o_buffer.push(routed);
+            }
+        }
+    }
 }
 
 void MeshRouter::update_packet_hop(MeshPacket& packet) {

@@ -10,6 +10,7 @@ SC_MODULE(ProcessingElement) {
 	uint32_t x_pos, y_pos;
 
 	SC_CTOR(ProcessingElement) : x_pos(0), y_pos(0) {
+		
 		SC_THREAD(pe_process);
 		sensitive << in_port;
 	}
@@ -20,19 +21,22 @@ SC_MODULE(ProcessingElement) {
 	}
 
 	void pe_process() {
-		// Generate test packets
-		for (int i = 0; i < 4; i++) {
+
+		// Generate a test packet
+	
+		if(strcmp(this->name(),"PE_0_0") == 0) {
+			cout << this->name() << " sending test packet " << endl;
 			MeshPacket pkt;
 			pkt.source_x = x_pos;
 			pkt.source_y = y_pos;
-			pkt.dest_x = (x_pos + 1) % 2;
-			pkt.dest_y = (y_pos + 1) % 2;
-			pkt.sequence = i;
+			pkt.dest_x = 2;
+			pkt.dest_y = 2;
+			pkt.sequence = 0;
 			pkt.type = DATA_PACKET;
 			pkt.timestamp = sc_time_stamp().to_default_time_units();
 
 			out_port->write(pkt);
-			cout << "PE(" << x_pos << "," << y_pos << ") sent packet " << i
+			cout << "PE(" << x_pos << "," << y_pos << ") sent packet " << pkt.sequence
 			     << " at " << sc_time_stamp() << endl;
 			wait(10, SC_NS);
 		}
@@ -49,7 +53,7 @@ SC_MODULE(ProcessingElement) {
 
 int sc_main(int argc, char* argv[]) {
 	// Create 2x2 mesh
-	const int MESH_SIZE = 2;
+	const int MESH_SIZE = 3;
 	MeshRouter* routers[MESH_SIZE][MESH_SIZE];
 	ProcessingElement* pes[MESH_SIZE][MESH_SIZE];
 

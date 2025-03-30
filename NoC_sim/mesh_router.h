@@ -25,26 +25,21 @@ SC_MODULE(MeshRouter) {
 	// PE ports (always present)
 	sc_port<sc_fifo_in_if<MeshPacket>> in_pe;
 	sc_port<sc_fifo_out_if<MeshPacket>> out_pe;
-
 	SC_HAS_PROCESS(MeshRouter);
-
 	MeshRouter(sc_module_name name, uint32_t x, uint32_t y, uint32_t mesh_size, uint32_t buf_depth = 8);
 	~MeshRouter();
 
 private:
-	std::queue<MeshPacket> i_buffer;
-	sc_event i_buffer_event;
-	std::queue<MeshPacket> o_buffer;
-	sc_event o_buffer_event;
+	std::queue<MeshPacket> i_buffer;  // For packets from other routers
+	std::queue<MeshPacket> o_buffer;  // For packets from local PE or to be forwarded
+    sc_event i_buffer_event, o_buffer_event;
 
-	void router_process();
-	void pe_interface_process();
-	void route_packet(const MeshPacket& packet);
-	void update_packet_hop(MeshPacket& packet);
-
-	// Updated to take pointers
-	bool read_port_conditional(sc_port<sc_fifo_in_if<MeshPacket>>* port, MeshPacket& packet);
-	bool write_port_conditional(sc_port<sc_fifo_out_if<MeshPacket>>* port, const MeshPacket& packet);
+    void router_process();
+    void pe_interface_process();
+    void route_packet(const MeshPacket& packet);
+    void update_packet_hop(MeshPacket& packet);
+    bool write_port_conditional(sc_port<sc_fifo_out_if<MeshPacket>>* port, const MeshPacket& packet);
+    bool MeshRouter::read_port_conditional(sc_port<sc_fifo_in_if<MeshPacket>>* port, MeshPacket& packet);
 };
 
-#endif // MESH_ROUTER_H
+#endif

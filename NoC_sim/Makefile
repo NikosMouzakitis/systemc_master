@@ -3,7 +3,7 @@ all:
 view:
 	gtkwave waveform.vcd
 clean:
-	rm a.out  waveform.vcd 
+	rm a.out  
 
 	
 	
