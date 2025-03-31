@@ -1,17 +1,22 @@
 #include <systemc.h>
+#include <set>
 #include "mesh_router.h"
 #include "mesh_packet.h"
 
 const int MESH_SIZE = 5;
-#define TRAFFIC_INJECTION_RATE 23
-#define SIMULATION_TIME	 600
+#define TRAFFIC_INJECTION_RATE 20
+#define SIMULATION_TIME	 6000
+#define PE_FIFO_SIZE 4
+std::set<uint32_t> global_sent_packets; //storing sent packets sequence no.
+std::set<uint32_t> global_received_packets; //storing received packets sequence no.
+
 // Simple Processing Element (PE) for testing
 SC_MODULE(ProcessingElement) {
 
 	sc_port<sc_fifo_in_if<MeshPacket>> in_port;
 	sc_port<sc_fifo_out_if<MeshPacket>> out_port;
 	uint32_t x_pos, y_pos;
-
+	
 	SC_CTOR(ProcessingElement) : x_pos(0), y_pos(0) {
 		
 		SC_THREAD(pe_process);
@@ -43,6 +48,7 @@ SC_MODULE(ProcessingElement) {
 			pkt.timestamp = sc_time_stamp();
 			//forwarding packet to router.
 			out_port->write(pkt);
+			global_sent_packets.insert(pkt.sequence); //logging the packet as sent with this sequence number.
 			cout << this->name() << " sent packet to (" << pkt.dest_x << "," << pkt.dest_y << ") @ " << sc_time_stamp() << endl;
 		}
 	}	
@@ -73,6 +79,10 @@ SC_MODULE(ProcessingElement) {
 		while (true) {
 			MeshPacket pkt = in_port->read();
 			sc_time latency = sc_time_stamp() - pkt.timestamp;
+
+			//logging operation.
+			global_received_packets.insert(pkt.sequence);	
+
 			cout << "-----------------------------------------------------" << endl;
 			cout << "PE(" << x_pos << "," << y_pos << ") received packet sequence: "
 			     << pkt.sequence << " from (" << pkt.source_x
@@ -110,8 +120,8 @@ int sc_main(int argc, char* argv[]) {
 	cout << "\n=== Connecting PEs ===" << endl;
 	for (int y = 0; y < MESH_SIZE; y++) {
 		for (int x = 0; x < MESH_SIZE; x++) {
-			auto* pe_to_router = new sc_fifo<MeshPacket>(4);
-			auto* router_to_pe = new sc_fifo<MeshPacket>(4);
+			auto* pe_to_router = new sc_fifo<MeshPacket>(PE_FIFO_SIZE);
+			auto* router_to_pe = new sc_fifo<MeshPacket>(PE_FIFO_SIZE);
 
 			pes[x][y]->out_port(*pe_to_router);
 			routers[x][y]->in_pe(*pe_to_router);
@@ -225,6 +235,31 @@ int sc_main(int argc, char* argv[]) {
 	// Start simulation
 	cout << "\n=== Starting Simulation ===" << endl;
 	sc_start(SIMULATION_TIME, SC_NS);
+	
+
+	// Check for lost packets after simulation ends
+	cout << "\n=== Packet Loss Report ===" << endl;
+	std::set<uint32_t> lost_packets;
+
+	cout << "Total sent Packets:  " << global_sent_packets.size() << endl;
+	// Compare sent and received packets
+	for (uint32_t seq : global_sent_packets) {
+		if (global_received_packets.find(seq) == global_received_packets.end()) {
+			lost_packets.insert(seq);  // Packet was never received
+		}
+	}
+
+	// Print lost packets
+	if (lost_packets.empty()) {
+		cout << "No packets lost!" << endl;
+	} else {
+		cout << "Total lost packets: " << lost_packets.size() << endl;
+		cout << "Lost sequences: ";
+		for (uint32_t seq : lost_packets) {
+			cout << seq << " ";
+		}
+		cout << endl;
+	}
 
 	// Cleanup
 	cout << "\n=== Cleaning Up ===" << endl;
