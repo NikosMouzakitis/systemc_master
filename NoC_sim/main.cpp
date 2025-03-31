@@ -5,8 +5,8 @@
 
 const int MESH_SIZE = 5;
 
-#define ROUTER_BUFFER_SIZE	10	//affects the dropped packets observation
-#define TRAFFIC_INJECTION_RATE 23
+#define ROUTER_BUFFER_SIZE	4 //affects the dropped packets observation
+#define TRAFFIC_INJECTION_RATE 50 
 #define SIMULATION_TIME	 100000
 #define PE_ROUTER_FIFO_SIZE 4
 #define ROUTER_ROUTER_FIFO_SIZE 4
@@ -376,14 +376,14 @@ int sc_main(int argc, char* argv[]) {
 			total_dropped_pkts += routers[x][y]->get_dropped_packets();
 
 	// Updated packet loss statistics to account for buffered packets
-	if (total_buffered_packets > 0) {
+//	if (total_buffered_packets > 0) {
 		cout << "\n=== Adjusted Packet Delivery Statistics ===" << endl;
 		cout << "Total sent packets:        " << global_sent_packets.size() << endl;
 		cout << "Successfully received:     " << global_received_packets.size() << endl;
 		cout << "Still in transit:          " << total_buffered_packets << endl;
 		cout << "Total logged dropped pkts: " << total_dropped_pkts << endl;
 		cout << "Actually lost packets:     " << lost_packets.size() - total_buffered_packets - total_dropped_pkts << endl;
-	}
+//	}
 
 
 	// Cleanup

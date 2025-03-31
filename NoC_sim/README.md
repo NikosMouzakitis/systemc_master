@@ -7,6 +7,22 @@ SystemC Network-on-Chip (NoC) Analysis
 ```
 
 
+Some visualization from running tests with 
+```
+#define PE_ROUTER_DELAY		2
+#define ROUTER_ROUTER_DELAY	5
+const int MESH_SIZE = 5;
+#define ROUTER_BUFFER_SIZE	4 //affects the dropped packets observation
+#define TRAFFIC_INJECTION_RATE 50 
+#define SIMULATION_TIME	 100000
+#define PE_ROUTER_FIFO_SIZE 4
+#define ROUTER_ROUTER_FIFO_SIZE 4
+```
+
+![img](https://github.com/NikosMouzakitis/systemc_master/blob/main/NoC_sim/chart_5x5.png)
+
+
+
 Overview
 This SystemC implementation models a 2x2 mesh Network-on-Chip (NoC) with routers and processing elements (PEs). The system demonstrates packet-based communication between PEs through a mesh network of routers.
 
