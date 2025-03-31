@@ -29,9 +29,9 @@ SC_MODULE(MeshRouter) {
 	MeshRouter(sc_module_name name, uint32_t x, uint32_t y, uint32_t mesh_size, uint32_t buf_depth = 8);
 	~MeshRouter();
 
-private:
 	std::queue<MeshPacket> i_buffer;  // For packets from other routers
 	std::queue<MeshPacket> o_buffer;  // For packets from local PE or to be forwarded
+private:
     sc_event i_buffer_event, o_buffer_event;
 
     void router_process();
