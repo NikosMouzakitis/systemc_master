@@ -131,18 +131,15 @@ void MeshRouter::router_process() {
         if (!o_buffer.empty()) {
             route_packet(o_buffer.front());
             o_buffer.pop_front();
-            //o_buffer.pop();
             processed = true;
         } else if (!i_buffer.empty()) {
 		MeshPacket pkt = i_buffer.front();
 		if (pkt.dest_x == x_pos && pkt.dest_y == y_pos) {
-                
 			// Local delivery - don't route, let pe_interface handle it
 			processed = true;
 		} else {
 			route_packet(pkt);
 			i_buffer.pop_front();
-			//i_buffer.pop();
 			processed = true;
 		}
 	}
@@ -153,17 +150,15 @@ void MeshRouter::router_process() {
         }
     }
 }
-
+//implements the routing of the packets.
 void MeshRouter::route_packet(const MeshPacket& packet) {
     MeshPacket routed = packet;
-//    update_packet_hop(routed);
 
     cout << this->name() << " ROUTING to (" << packet.dest_x 
          << "," << packet.dest_y << ") @ " << sc_time_stamp() << endl;
 
     if (packet.dest_x == x_pos && packet.dest_y == y_pos) {
         // Local delivery
-        //i_buffer.push(routed);
 	push_to_buffer(i_buffer,routed);
         return;
     }
@@ -171,13 +166,11 @@ void MeshRouter::route_packet(const MeshPacket& packet) {
     if (packet.dest_x != x_pos) { // X-dimension first
         if (packet.dest_x > x_pos && out_east) {
             if (!write_port_conditional(out_east, routed)) {
-                //o_buffer.push(routed);
 		push_to_buffer(o_buffer,routed);
             }
         } 
         else if (out_west) {
             if (!write_port_conditional(out_west, routed)) {
-                //o_buffer.push(routed);
 		push_to_buffer(o_buffer,routed);
             }
         }
@@ -185,13 +178,11 @@ void MeshRouter::route_packet(const MeshPacket& packet) {
     else { // Y-dimension
         if (packet.dest_y > y_pos && out_north) {
             if (!write_port_conditional(out_north, routed)) {
-                //o_buffer.push(routed);
 		push_to_buffer(o_buffer,routed);
             }
         } 
         else if (out_south) {
             if (!write_port_conditional(out_south, routed)) {
-                //o_buffer.push(routed);
 		push_to_buffer(o_buffer,routed);
             }
         }

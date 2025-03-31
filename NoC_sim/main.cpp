@@ -3,16 +3,21 @@
 #include "mesh_router.h"
 #include "mesh_packet.h"
 
-const int MESH_SIZE = 5;
+const int MESH_SIZE = 8;
 
-#define ROUTER_BUFFER_SIZE	4 //affects the dropped packets observation
-#define TRAFFIC_INJECTION_RATE 50 
-#define SIMULATION_TIME	 100000
+#define ROUTER_BUFFER_SIZE	2 //affects the dropped packets observation
+#define TRAFFIC_INJECTION_RATE 23
+#define SIMULATION_TIME	 1000
 #define PE_ROUTER_FIFO_SIZE 4
 #define ROUTER_ROUTER_FIFO_SIZE 4
-
 std::set<uint32_t> global_sent_packets; //storing sent packets sequence no.
 std::set<uint32_t> global_received_packets; //storing received packets sequence no.
+
+#define UNI		1  //uniform random traffic pattern.
+#define BT		2  //bit complement traffic pattern.
+#define TRANSPOSE	3  //Transpose traffic pattern. //not-used since we don't send self messages.
+
+int traffic_pattern = UNI;
 
 
 // Simple Processing Element (PE) for testing
@@ -34,7 +39,9 @@ SC_MODULE(ProcessingElement) {
 		y_pos = y;
 	}
 
-	//traffic generation within' the Network on Chip.
+
+	
+	//random uniform traffic generation within' the Network on Chip.
 	void traffic_gen(void) {
 		static uint32_t seq_cnt = 0;
 		while (true) {
@@ -44,12 +51,25 @@ SC_MODULE(ProcessingElement) {
 			pkt.source_x = x_pos;
 			pkt.source_y = y_pos;
 			pkt.sequence = seq_cnt++;
-			// Uniform random destination (excluding self)
 			do {
-				pkt.dest_x = rand() % MESH_SIZE;
-				pkt.dest_y = rand() % MESH_SIZE;
+				switch(traffic_pattern) {
+				case(UNI):      // Uniform random destination (excluding self)
+					pkt.dest_x = rand() % MESH_SIZE;
+					pkt.dest_y = rand() % MESH_SIZE;
+					break;
+				case(BT) :	// Bit complement destination
+					pkt.dest_x = MESH_SIZE - 1 - x_pos;
+					pkt.dest_y = MESH_SIZE - 1 - y_pos;
+					break;
+				case(TRANSPOSE):
+					pkt.dest_x = y_pos;
+					pkt.dest_y = x_pos;
+					break;
+				}
 			} while (pkt.dest_x == x_pos && pkt.dest_y == y_pos);
+
 			//timestamp it.
+			
 			pkt.timestamp = sc_time_stamp();
 			//forwarding packet to router.
 			out_port->write(pkt);
@@ -57,7 +77,7 @@ SC_MODULE(ProcessingElement) {
 			cout << this->name() << " sent packet to (" << pkt.dest_x << "," << pkt.dest_y << ") @ " << sc_time_stamp() << endl;
 		}
 	}
-
+	
 	//reception process of processing element.
 	void pe_process() {
 		// Receive packets
@@ -377,12 +397,12 @@ int sc_main(int argc, char* argv[]) {
 
 	// Updated packet loss statistics to account for buffered packets
 //	if (total_buffered_packets > 0) {
-		cout << "\n=== Adjusted Packet Delivery Statistics ===" << endl;
-		cout << "Total sent packets:        " << global_sent_packets.size() << endl;
-		cout << "Successfully received:     " << global_received_packets.size() << endl;
-		cout << "Still in transit:          " << total_buffered_packets << endl;
-		cout << "Total logged dropped pkts: " << total_dropped_pkts << endl;
-		cout << "Actually lost packets:     " << lost_packets.size() - total_buffered_packets - total_dropped_pkts << endl;
+	cout << "\n=== Adjusted Packet Delivery Statistics ===" << endl;
+	cout << "Total sent packets:        " << global_sent_packets.size() << endl;
+	cout << "Successfully received:     " << global_received_packets.size() << endl;
+	cout << "Still in transit:          " << total_buffered_packets << endl;
+	cout << "Total logged dropped pkts: " << total_dropped_pkts << endl;
+	cout << "Actually lost packets:     " << lost_packets.size() - total_buffered_packets - total_dropped_pkts << endl;
 //	}
 
 
