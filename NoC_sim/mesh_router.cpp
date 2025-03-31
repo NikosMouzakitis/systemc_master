@@ -1,8 +1,7 @@
 #include "mesh_router.h"
 
-#define PE_ROUTER_DELAY 2
-#define ROUTER_ROUTER_DELAY 5
-
+#define PE_ROUTER_DELAY		2
+#define ROUTER_ROUTER_DELAY	5
 
 MeshRouter::MeshRouter(sc_module_name name, uint32_t x, uint32_t y, uint32_t mesh_size, uint32_t buf_depth) :
 	sc_module(name), x_pos(x), y_pos(y), mesh_size(mesh_size), buffer_depth(buf_depth), in_north(nullptr), in_south(nullptr), in_east(nullptr), in_west(nullptr), out_north(nullptr), out_south(nullptr), out_east(nullptr), out_west(nullptr)
@@ -29,7 +28,6 @@ MeshRouter::MeshRouter(sc_module_name name, uint32_t x, uint32_t y, uint32_t mes
 		in_west = new sc_port<sc_fifo_in_if<MeshPacket>>();
 		cout << this->name() << " creating in/out WEST" << endl;
 	}
-
 	SC_THREAD(router_process);
 	SC_THREAD(pe_interface_process);
 }
@@ -43,6 +41,16 @@ MeshRouter::~MeshRouter() {
 	delete out_east;
 	delete in_west;
 	delete out_west;
+}
+// Helper function to push packets into bounded buffers(i_buffer & o_buffer)
+bool MeshRouter::push_to_buffer(std::deque<MeshPacket>& buffer, const MeshPacket& packet) {
+	if (buffer.size() < buffer_depth) {  // Check against buffer_depth
+		buffer.push_back(packet);
+		return true;
+        }
+	cout << "Buffer overflow! Dropping packet: " << packet.sequence << endl;
+	dropped_pkts++;
+        return false;  // Packet dropped due to full buffer
 }
 
 bool MeshRouter::read_port_conditional(sc_port<sc_fifo_in_if<MeshPacket>>* port, MeshPacket& packet) {
@@ -75,7 +83,8 @@ void MeshRouter::pe_interface_process() {
         if (in_pe->num_available() > 0) {
             MeshPacket pkt = in_pe->read();
             cout << this->name() << " received from PE @ " << sc_time_stamp() << endl;
-            o_buffer.push(pkt);
+            //o_buffer.push(pkt);
+	    push_to_buffer(o_buffer, pkt);
             o_buffer_event.notify();
         }
 
@@ -84,7 +93,8 @@ void MeshRouter::pe_interface_process() {
             MeshPacket& pkt = i_buffer.front();
             if (pkt.dest_x == x_pos && pkt.dest_y == y_pos) {
                 out_pe->write(pkt);
-                i_buffer.pop();
+                i_buffer.pop_front();
+                //i_buffer.pop();
                 cout << this->name() << " DELIVERED to PE @ " << sc_time_stamp() << endl;
             }
         }
@@ -101,14 +111,17 @@ void MeshRouter::router_process() {
         bool processed = false;
         MeshPacket packet;
 
-        // Check all input ports (unchanged)
+	// Check all input ports
         #define CHECK_PORT(port, dir) \
             if (port && (*port)->num_available() > 0) { \
                 packet = (*port)->read(); \
                 cout << this->name() << " received from " #dir " @ " << sc_time_stamp() << endl; \
-                i_buffer.push(packet); \
+                if (!push_to_buffer(i_buffer, packet)) { \
+                    cout << "Dropped packet due to full i_buffer: " << packet.sequence << endl; \
+                } \
                 processed = true; \
             }
+
         CHECK_PORT(in_north, NORTH)
         CHECK_PORT(in_south, SOUTH)
         CHECK_PORT(in_east, EAST)
@@ -117,7 +130,8 @@ void MeshRouter::router_process() {
         // Process buffers, prioritizing the o_buffer
         if (!o_buffer.empty()) {
             route_packet(o_buffer.front());
-            o_buffer.pop();
+            o_buffer.pop_front();
+            //o_buffer.pop();
             processed = true;
         } else if (!i_buffer.empty()) {
 		MeshPacket pkt = i_buffer.front();
@@ -127,7 +141,8 @@ void MeshRouter::router_process() {
 			processed = true;
 		} else {
 			route_packet(pkt);
-			i_buffer.pop();
+			i_buffer.pop_front();
+			//i_buffer.pop();
 			processed = true;
 		}
 	}
@@ -148,31 +163,36 @@ void MeshRouter::route_packet(const MeshPacket& packet) {
 
     if (packet.dest_x == x_pos && packet.dest_y == y_pos) {
         // Local delivery
-        i_buffer.push(routed);
+        //i_buffer.push(routed);
+	push_to_buffer(i_buffer,routed);
         return;
     }
 
     if (packet.dest_x != x_pos) { // X-dimension first
         if (packet.dest_x > x_pos && out_east) {
             if (!write_port_conditional(out_east, routed)) {
-                o_buffer.push(routed);
+                //o_buffer.push(routed);
+		push_to_buffer(o_buffer,routed);
             }
         } 
         else if (out_west) {
             if (!write_port_conditional(out_west, routed)) {
-                o_buffer.push(routed);
+                //o_buffer.push(routed);
+		push_to_buffer(o_buffer,routed);
             }
         }
     } 
     else { // Y-dimension
         if (packet.dest_y > y_pos && out_north) {
             if (!write_port_conditional(out_north, routed)) {
-                o_buffer.push(routed);
+                //o_buffer.push(routed);
+		push_to_buffer(o_buffer,routed);
             }
         } 
         else if (out_south) {
             if (!write_port_conditional(out_south, routed)) {
-                o_buffer.push(routed);
+                //o_buffer.push(routed);
+		push_to_buffer(o_buffer,routed);
             }
         }
     }

@@ -11,7 +11,7 @@ SC_MODULE(MeshRouter) {
 	const uint32_t y_pos;
 	const uint32_t mesh_size;
 	const uint32_t buffer_depth;
-
+	uint32_t dropped_pkts=0;
 	// Conditional ports (use references instead of pointers)
 	sc_port<sc_fifo_in_if<MeshPacket>>* in_north=nullptr;
 	sc_port<sc_fifo_in_if<MeshPacket>>* in_south=nullptr;
@@ -29,17 +29,20 @@ SC_MODULE(MeshRouter) {
 	MeshRouter(sc_module_name name, uint32_t x, uint32_t y, uint32_t mesh_size, uint32_t buf_depth = 8);
 	~MeshRouter();
 
-	std::queue<MeshPacket> i_buffer;  // For packets from other routers
-	std::queue<MeshPacket> o_buffer;  // For packets from local PE or to be forwarded
+	std::deque<MeshPacket> i_buffer;  // For packets from other routers
+	std::deque<MeshPacket> o_buffer;  // For packets from local PE or to be forwarded
+	// Public getter for dropped_pkts
+	uint32_t get_dropped_packets() const {return dropped_pkts;}
 private:
     sc_event i_buffer_event, o_buffer_event;
 
-    void router_process();
+    bool push_to_buffer(std::deque<MeshPacket>& buffer, const MeshPacket& packet);
     void pe_interface_process();
     void route_packet(const MeshPacket& packet);
     void update_packet_hop(MeshPacket& packet);
     bool write_port_conditional(sc_port<sc_fifo_out_if<MeshPacket>>* port, const MeshPacket& packet);
     bool MeshRouter::read_port_conditional(sc_port<sc_fifo_in_if<MeshPacket>>* port, MeshPacket& packet);
+    void MeshRouter::router_process(void);
 };
 
 #endif

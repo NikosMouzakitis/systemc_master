@@ -4,12 +4,16 @@
 #include "mesh_packet.h"
 
 const int MESH_SIZE = 5;
-#define TRAFFIC_INJECTION_RATE 75
-#define SIMULATION_TIME	 10000
+
+#define ROUTER_BUFFER_SIZE	10	//affects the dropped packets observation
+#define TRAFFIC_INJECTION_RATE 23
+#define SIMULATION_TIME	 100000
 #define PE_ROUTER_FIFO_SIZE 4
 #define ROUTER_ROUTER_FIFO_SIZE 4
+
 std::set<uint32_t> global_sent_packets; //storing sent packets sequence no.
 std::set<uint32_t> global_received_packets; //storing received packets sequence no.
+
 
 // Simple Processing Element (PE) for testing
 SC_MODULE(ProcessingElement) {
@@ -56,26 +60,6 @@ SC_MODULE(ProcessingElement) {
 
 	//reception process of processing element.
 	void pe_process() {
-
-		/*
-		// Generate a test packet
-		if(strcmp(this->name(),"PE_0_0") == 0) {
-			cout << this->name() << " sending test packet " << endl;
-			MeshPacket pkt;
-			pkt.source_x = x_pos;
-			pkt.source_y = y_pos;
-			pkt.dest_x = 2;
-			pkt.dest_y = 2;
-			pkt.sequence = 0;
-			pkt.type = DATA_PACKET;
-			pkt.timestamp = sc_time_stamp().to_default_time_units();
-			pkt.payload.raw[0] = 0x00;
-			out_port->write(pkt);
-			cout << "PE(" << x_pos << "," << y_pos << ") sent packet " << pkt.sequence
-			     << " at " << sc_time_stamp() << endl;
-			wait(10, SC_NS);
-		}
-		*/
 		// Receive packets
 		while (true) {
 			MeshPacket pkt = in_port->read();
@@ -95,6 +79,22 @@ SC_MODULE(ProcessingElement) {
 	}
 };
 
+void inspect_sc_fifo(sc_fifo<MeshPacket>& fifo, const std::string& fifo_name) {
+	size_t num_packets = fifo.num_available();
+	if (num_packets > 0) {
+		cout << "  " << fifo_name << ": " << num_packets << " packets" << endl;
+		cout << "  Contents:" << endl;
+		for (size_t i = 0; i < num_packets; ++i) {
+			MeshPacket pkt = fifo.read(); // Read packet from FIFO
+			cout << "    Seq: " << pkt.sequence << " from (" << pkt.source_x << "," << pkt.source_y
+			     << ") to (" << pkt.dest_x << "," << pkt.dest_y << ")" << endl;
+			fifo.write(pkt); // Write packet back to FIFO to preserve its state
+		}
+	} else {
+		cout << "  " << fifo_name << ": EMPTY" << endl;
+	}
+}
+
 int sc_main(int argc, char* argv[]) {
 	MeshRouter* routers[MESH_SIZE][MESH_SIZE];
 	ProcessingElement* pes[MESH_SIZE][MESH_SIZE];
@@ -106,7 +106,7 @@ int sc_main(int argc, char* argv[]) {
 		for (int x = 0; x < MESH_SIZE; x++) {
 			// Create router
 			std::string router_name = "Router_" + std::to_string(x) + "_" + std::to_string(y);
-			routers[x][y] = new MeshRouter(router_name.c_str(), x, y, MESH_SIZE);
+			routers[x][y] = new MeshRouter(router_name.c_str(), x, y, MESH_SIZE, ROUTER_BUFFER_SIZE);
 			cout << "Created " << router_name << endl;
 
 			// Create PE
@@ -261,34 +261,30 @@ int sc_main(int argc, char* argv[]) {
 		}
 		cout << endl;
 	}
-
-
-	// After the packet loss report in sc_main(), add:
-
-	// ==============================================
-	// Check for packets still in router buffers
-	// ==============================================
-	cout << "\n=== Packets Still in Router Buffers ===" << endl;
+	cout << "\n=== Packets Still in Router Buffers and PE-ROUTER FIFOS ===" << endl;
 	size_t total_buffered_packets = 0;
 
 	for (int y = 0; y < MESH_SIZE; y++) {
 		for (int x = 0; x < MESH_SIZE; x++) {
+			// Calculate packets in router buffers
 			size_t router_buffered = routers[x][y]->i_buffer.size() + routers[x][y]->o_buffer.size();
+
+			// Print router buffer contents
 			if (router_buffered > 0) {
 				cout << "Router_" << x << "_" << y << " has " << router_buffered << " packets:" << endl;
 				cout << "  i_buffer: " << routers[x][y]->i_buffer.size() << " packets" << endl;
 				cout << "  o_buffer: " << routers[x][y]->o_buffer.size() << " packets" << endl;
 
 				// Optional: Print details of buffered packets
-				std::queue<MeshPacket> temp_i = routers[x][y]->i_buffer;
-				std::queue<MeshPacket> temp_o = routers[x][y]->o_buffer;
+				std::deque<MeshPacket> temp_i = routers[x][y]->i_buffer;
+				std::deque<MeshPacket> temp_o = routers[x][y]->o_buffer;
 
 				cout << "  i_buffer contents:" << endl;
 				while (!temp_i.empty()) {
 					MeshPacket pkt = temp_i.front();
 					cout << "    Seq: " << pkt.sequence << " from (" << pkt.source_x << "," << pkt.source_y
 					     << ") to (" << pkt.dest_x << "," << pkt.dest_y << ")" << endl;
-					temp_i.pop();
+					temp_i.pop_front();
 				}
 
 				cout << "  o_buffer contents:" << endl;
@@ -296,14 +292,88 @@ int sc_main(int argc, char* argv[]) {
 					MeshPacket pkt = temp_o.front();
 					cout << "    Seq: " << pkt.sequence << " from (" << pkt.source_x << "," << pkt.source_y
 					     << ") to (" << pkt.dest_x << "," << pkt.dest_y << ")" << endl;
-					temp_o.pop();
+					temp_o.pop_front();
 				}
 			}
+
+			// Check PE-to-router FIFOs
+			if (routers[x][y]->in_pe.get_interface()) {
+				sc_fifo<MeshPacket>* fifo = dynamic_cast<sc_fifo<MeshPacket>*>(routers[x][y]->in_pe.get_interface());
+				size_t pe_to_router_packets = fifo->num_available();
+				if (pe_to_router_packets > 0) {
+					cout << "Router_" << x << "_" << y << " PE-to-router FIFOs: " << pe_to_router_packets << " packets" << endl;
+					inspect_sc_fifo(*fifo, "in_pe");
+				}
+				total_buffered_packets += pe_to_router_packets;
+			}
+
+			// Check router-to-PE FIFOs
+			if (routers[x][y]->out_pe.get_interface()) {
+				sc_fifo<MeshPacket>* fifo = dynamic_cast<sc_fifo<MeshPacket>*>(routers[x][y]->out_pe.get_interface());
+				size_t router_to_pe_packets = fifo->num_available();
+				if (router_to_pe_packets > 0) {
+					cout << "Router_" << x << "_" << y << " router-to-PE FIFOs: " << router_to_pe_packets << " packets" << endl;
+					inspect_sc_fifo(*fifo, "out_pe");
+				}
+				total_buffered_packets += router_to_pe_packets;
+			}
+
+			// Accumulate total buffered packets (router buffers)
 			total_buffered_packets += router_buffered;
 		}
 	}
 
-	cout << "Total packets still in router buffers: " << total_buffered_packets << endl;
+// Check router-to-router FIFOs
+	cout << "\n=== Packets Still in Router-to-Router FIFOs ===" << endl;
+	for (int y = 0; y < MESH_SIZE - 1; y++) {
+		for (int x = 0; x < MESH_SIZE; x++) {
+			if (north_channels[x][y]) {
+				size_t north_packets = north_channels[x][y]->num_available();
+				if (north_packets > 0) {
+					cout << "north_channels[" << x << "][" << y << "]: " << north_packets << " packets" << endl;
+					inspect_sc_fifo(*north_channels[x][y], "north_channels[" + std::to_string(x) + "][" + std::to_string(y) + "]");
+				}
+				total_buffered_packets += north_packets;
+			}
+			if (south_channels[x][y]) {
+				size_t south_packets = south_channels[x][y]->num_available();
+				if (south_packets > 0) {
+					cout << "south_channels[" << x << "][" << y << "]: " << south_packets << " packets" << endl;
+					inspect_sc_fifo(*south_channels[x][y], "south_channels[" + std::to_string(x) + "][" + std::to_string(y) + "]");
+				}
+				total_buffered_packets += south_packets;
+			}
+		}
+	}
+
+	for (int y = 0; y < MESH_SIZE; y++) {
+		for (int x = 0; x < MESH_SIZE - 1; x++) {
+			if (east_channels[x][y]) {
+				size_t east_packets = east_channels[x][y]->num_available();
+				if (east_packets > 0) {
+					cout << "east_channels[" << x << "][" << y << "]: " << east_packets << " packets" << endl;
+					inspect_sc_fifo(*east_channels[x][y], "east_channels[" + std::to_string(x) + "][" + std::to_string(y) + "]");
+				}
+				total_buffered_packets += east_packets;
+			}
+			if (west_channels[x][y]) {
+				size_t west_packets = west_channels[x][y]->num_available();
+				if (west_packets > 0) {
+					cout << "west_channels[" << x << "][" << y << "]: " << west_packets << " packets" << endl;
+					inspect_sc_fifo(*west_channels[x][y], "west_channels[" + std::to_string(x) + "][" + std::to_string(y) + "]");
+				}
+				total_buffered_packets += west_packets;
+			}
+		}
+	}
+
+	cout << "Total packets still in transit (buffers + FIFOs): " << total_buffered_packets << endl;
+
+
+	uint32_t total_dropped_pkts = 0;
+	for(int y = 0; y < MESH_SIZE; y++)
+		for(int x = 0; x < MESH_SIZE; x++)
+			total_dropped_pkts += routers[x][y]->get_dropped_packets();
 
 	// Updated packet loss statistics to account for buffered packets
 	if (total_buffered_packets > 0) {
@@ -311,7 +381,8 @@ int sc_main(int argc, char* argv[]) {
 		cout << "Total sent packets:        " << global_sent_packets.size() << endl;
 		cout << "Successfully received:     " << global_received_packets.size() << endl;
 		cout << "Still in transit:          " << total_buffered_packets << endl;
-		cout << "Actually lost packets:     " << lost_packets.size() - total_buffered_packets << endl;
+		cout << "Total logged dropped pkts: " << total_dropped_pkts << endl;
+		cout << "Actually lost packets:     " << lost_packets.size() - total_buffered_packets - total_dropped_pkts << endl;
 	}
 
 

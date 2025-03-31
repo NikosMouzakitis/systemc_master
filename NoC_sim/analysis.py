@@ -114,7 +114,7 @@ def plot_latency_vs_hops(df):
     plt.title('Latency vs Hop Count')
     plt.legend()
     plt.grid(True, alpha=0.3)
-    plt.xticks(range(1, 5))  # Max hops in 3x3 mesh is 4
+    plt.xticks(range(1, 8))  # Max hops in 3x3 mesh is 4
     plt.show()
 
 def plot_3d_latency(df):
@@ -136,8 +136,8 @@ def plot_3d_latency(df):
     ax.set_ylabel('Source Y')
     ax.set_zlabel('Latency (ns)')
     ax.set_title('Packet Latency by Source Coordinates')
-    ax.set_xticks([0, 1, 2])
-    ax.set_yticks([0, 1, 2])
+    ax.set_xticks([0, 1, 2, 3, 4])
+    ax.set_yticks([0, 1, 2, 3, 4])
     
     # Add colorbar
     cbar = plt.colorbar(sc, pad=0.1)
