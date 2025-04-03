@@ -5,8 +5,8 @@
 
 const int MESH_SIZE = 4;
 
-#define ROUTER_BUFFER_SIZE	2 //affects the dropped packets observation
-#define TRAFFIC_INJECTION_RATE 40
+#define ROUTER_BUFFER_SIZE	10 //affects the dropped packets observation
+#define TRAFFIC_INJECTION_RATE 43 
 #define SIMULATION_TIME	 7000
 #define PE_ROUTER_FIFO_SIZE 4
 #define ROUTER_ROUTER_FIFO_SIZE 4
@@ -17,8 +17,7 @@ std::set<uint32_t> global_received_packets; //storing received packets sequence 
 #define UNI		1  //uniform random traffic pattern.
 #define BT		2  //bit complement traffic pattern.
 #define TRANSPOSE	3  //Transpose traffic pattern. //not-used since we don't send self messages.
-
-int traffic_pattern = UNI;
+int traffic_pattern = BT;
 
 
 // Simple Processing Element (PE) for testing
@@ -402,7 +401,8 @@ int sc_main(int argc, char* argv[]) {
 
 	/// total stats regarding packets in the system.
 	// Updated packet loss statistics to account for buffered packets
-	cout << "\033[1;31m" << endl;
+//	cout << "\033[1;31m" << endl;//red color
+	cout << "\033[38;5;202m" << endl;
 	cout << "\n=== Adjusted Packet Delivery Statistics ===" << endl;
 	cout << "Total sent packets:        " << global_sent_packets.size() << endl;
 	cout << "Successfully received:     " << global_received_packets.size() << endl;

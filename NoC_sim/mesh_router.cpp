@@ -44,24 +44,24 @@ MeshRouter::~MeshRouter() {
 }
 
 bool MeshRouter::push_to_buffer(std::deque<MeshPacket>& buffer, const MeshPacket& packet) {
-    if (buffer.size() < buffer_depth) {
-        buffer.push_back(packet);
-        return true;
-    }
-    
-    // Print drop information
-    cout << "\033[1;31mBuffer overflow!\033[0m Dropping packet: " << packet.sequence 
-         << " (dest:" << packet.dest_x << "," << packet.dest_y << ")" << endl;
-    
-    // Print current buffer contents
-    cout << "Current buffer contents (sequences): [";
-    for (const auto& pkt : buffer) {
-        cout << pkt.sequence << " (dest:" << pkt.dest_x << "," << pkt.dest_y << "), ";
-    }
-    cout << "]" << endl;
-    
-    dropped_pkts++;
-    return false;
+	if (buffer.size() < buffer_depth) {
+		buffer.push_back(packet);
+		return true;
+	}
+
+	// Print drop information
+	cout << "\033[1;31mBuffer overflow!\033[0m Dropping packet: " << packet.sequence
+	     << " (dest:" << packet.dest_x << "," << packet.dest_y << ")" << endl;
+
+	// Print current buffer contents
+	cout << "Current buffer contents (sequences): [";
+	for (const auto& pkt : buffer) {
+		cout << pkt.sequence << " (dest:" << pkt.dest_x << "," << pkt.dest_y << "), ";
+	}
+	cout << "]" << endl;
+
+	dropped_pkts++;
+	return false;
 }
 
 
@@ -75,39 +75,47 @@ bool MeshRouter::read_port_conditional(sc_port<sc_fifo_in_if<MeshPacket>>* port,
 	return false;
 }
 
-
 void MeshRouter::route_packet_simultaneous(const MeshPacket& packet) {
+	// Skip if packet is already being routed
+	if (in_flight_packets.count(packet.sequence)) {
+		return;
+	}
+
 	if (packet.dest_x == x_pos && packet.dest_y == y_pos) {
 		push_to_buffer(i_buffer, packet);
 		return;
 	}
 
-	// Dimension-order routing (X first, then Y)
-	bool packet_routed = false;
+	in_flight_packets.insert(packet.sequence); // Mark as in-flight
 
-	// Try X dimension first
+	bool x_routed = false;
+	bool y_routed = false;
+
+	// X-dimension routing
 	if (packet.dest_x != x_pos) {
 		if (packet.dest_x > x_pos && out_east && is_port_available(out_east)) {
-			packet_routed = write_port_conditional(out_east, packet);
+			x_routed = write_port_conditional(out_east, packet);
 		}
 		else if (out_west && is_port_available(out_west)) {
-			packet_routed = write_port_conditional(out_west, packet);
+			x_routed = write_port_conditional(out_west, packet);
 		}
 	}
 
-	// Only try Y dimension if X routing failed or we're in same column
-	if (!packet_routed && packet.dest_y != y_pos) {
+	// Y-dimension routing (can happen simultaneously with X)
+	if (!x_routed && packet.dest_y != y_pos) {
 		if (packet.dest_y > y_pos && out_north && is_port_available(out_north)) {
-			packet_routed = write_port_conditional(out_north, packet);
+			y_routed = write_port_conditional(out_north, packet);
 		}
 		else if (out_south && is_port_available(out_south)) {
-			packet_routed = write_port_conditional(out_south, packet);
+			y_routed = write_port_conditional(out_south, packet);
 		}
 	}
 
-	if (!packet_routed) {
+	if (!x_routed && !y_routed) {
 		push_to_buffer(o_buffer, packet);
 	}
+
+	in_flight_packets.erase(packet.sequence); // Clear in-flight status
 }
 
 bool MeshRouter::write_port_conditional(sc_port<sc_fifo_out_if<MeshPacket>>* port,
@@ -146,7 +154,9 @@ void MeshRouter::pe_interface_process() {
 		// Handle incoming packets from PE
 		if (in_pe->num_available() > 0) {
 			MeshPacket pkt = in_pe->read();
-			cout << this->name() << " received packet, seq: " << pkt.sequence << " from PE @ " << sc_time_stamp() << endl;
+			cout << "\t\t\t\t\t\t-------------------PE reception-start-----------------------------------" << endl;
+			cout <<"\t\t\t\t\t\t"<< this->name() << " received packet, seq: " << pkt.sequence << " from PE @ " << sc_time_stamp() << endl;
+			cout << "\t\t\t\t\t\t-------------------PE reception-end-------------------------------------" << endl;
 			push_to_buffer(o_buffer, pkt);
 		}
 
@@ -170,28 +180,33 @@ void MeshRouter::router_process() {
 
 
 		if (in_north && read_port_conditional(in_north, packets[0])) {
-			cout << this->name() << " received packet seq:" << packets[0].sequence
+			cout <<"\t\t\t\t"<< "-----------------"<<this->name()<<"-------------------------------------------"<<endl;
+			cout <<"\t\t\t\t"<< this->name() << " received packet seq:" << packets[0].sequence
 			     << " from NORTH (source:" << packets[0].source_x << "," << packets[0].source_y << ")"
 			     << " (dest:" << packets[0].dest_x << "," << packets[0].dest_y << ")"
 			     << " @ " << sc_time_stamp() << endl;
+			cout << "\t\t\t\t"<< "----------------------------------------------------------------------------------"<<endl;
 			has_packet[0] = true;
 		}
 		if (in_south && read_port_conditional(in_south, packets[1])) {
-			cout << this->name() << " received packet seq:" << packets[1].sequence
+			cout <<"\t\t\t\t"<< "-----------------"<<this->name()<<"-------------------------------------------"<<endl;
+			cout <<"\t\t\t\t"<< this->name() << " received packet seq:" << packets[0].sequence
 			     << " from SOUTH (source:" << packets[1].source_x << "," << packets[1].source_y << ")"
 			     << " (dest:" << packets[1].dest_x << "," << packets[1].dest_y << ")"
 			     << " @ " << sc_time_stamp() << endl;
 			has_packet[1] = true;
 		}
 		if (in_east && read_port_conditional(in_east, packets[2])) {
-			cout << this->name() << " received packet seq:" << packets[2].sequence
+			cout <<"\t\t\t\t"<< "-----------------"<<this->name()<<"-------------------------------------------"<<endl;
+			cout <<"\t\t\t\t"<< this->name() << " received packet seq:" << packets[0].sequence
 			     << " from EAST (source:" << packets[2].source_x << "," << packets[2].source_y << ")"
 			     << " (dest:" << packets[2].dest_x << "," << packets[2].dest_y << ")"
 			     << " @ " << sc_time_stamp() << endl;
 			has_packet[2] = true;
 		}
 		if (in_west && read_port_conditional(in_west, packets[3])) {
-			cout << this->name() << " received packet seq:" << packets[3].sequence
+			cout <<"\t\t\t\t"<< "-----------------"<<this->name()<<"-------------------------------------------"<<endl;
+			cout <<"\t\t\t\t"<< this->name() << " received packet seq:" << packets[0].sequence
 			     << " from WEST (source:" << packets[3].source_x << "," << packets[3].source_y << ")"
 			     << " (dest:" << packets[3].dest_x << "," << packets[3].dest_y << ")"
 			     << " @ " << sc_time_stamp() << endl;
@@ -207,25 +222,33 @@ void MeshRouter::router_process() {
 		}
 
 		// Process output buffers with simultaneous routing
+
+
+		// Process output buffer - NEW VERSION
 		if (!o_buffer.empty()) {
-			// First pass: identify all packets that can be routed
-			std::vector<MeshPacket> to_route;
-			std::vector<MeshPacket> to_keep;
+			// Make a copy of current packets to process
+			std::vector<MeshPacket> to_process;
+			to_process.assign(o_buffer.begin(), o_buffer.end());
+			o_buffer.clear(); // Clear original buffer
 
-			for (auto& pkt : o_buffer) {
-				if (pkt.dest_x == x_pos && pkt.dest_y == y_pos) {
-					push_to_buffer(i_buffer, pkt); // Local delivery
-				} else {
-					to_route.push_back(pkt);
-				}
-			}
-			o_buffer.clear();
-
-			// Second pass: attempt to route each packet
-			for (auto& pkt : to_route) {
+			for (auto& pkt : to_process) {
 				route_packet_simultaneous(pkt);
 			}
 		}
+
+		// Process input buffer
+		if (!i_buffer.empty()) {
+			MeshPacket pkt = i_buffer.front();
+			i_buffer.pop_front();
+
+			if (pkt.dest_x == x_pos && pkt.dest_y == y_pos) {
+				push_to_buffer(i_buffer, pkt); // Local delivery
+			} else {
+				route_packet_simultaneous(pkt);
+			}
+		}
+
+
 
 		if (!i_buffer.empty()) {
 			MeshPacket pkt = i_buffer.front();

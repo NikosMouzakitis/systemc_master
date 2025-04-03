@@ -4,6 +4,7 @@
 #include <systemc.h>
 #include <queue>
 #include "mesh_packet.h"
+#include <set>
 
 SC_MODULE(MeshRouter) {
 	// Router parameters
@@ -31,6 +32,7 @@ SC_MODULE(MeshRouter) {
 
 	std::deque<MeshPacket> i_buffer;  // For packets from other routers
 	std::deque<MeshPacket> o_buffer;  // For packets from local PE or to be forwarded
+	std::set<uint32_t> in_flight_packets; //track packets being routed.
 	// Public getter for dropped_pkts
 	uint32_t get_dropped_packets() const {return dropped_pkts;}
 private:
