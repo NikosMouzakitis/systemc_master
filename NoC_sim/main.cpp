@@ -3,11 +3,11 @@
 #include "mesh_router.h"
 #include "mesh_packet.h"
 
-const int MESH_SIZE = 8;
+const int MESH_SIZE = 4;
 
 #define ROUTER_BUFFER_SIZE	2 //affects the dropped packets observation
-#define TRAFFIC_INJECTION_RATE 23
-#define SIMULATION_TIME	 70
+#define TRAFFIC_INJECTION_RATE 40
+#define SIMULATION_TIME	 7000
 #define PE_ROUTER_FIFO_SIZE 4
 #define ROUTER_ROUTER_FIFO_SIZE 4
 
@@ -402,12 +402,14 @@ int sc_main(int argc, char* argv[]) {
 
 	/// total stats regarding packets in the system.
 	// Updated packet loss statistics to account for buffered packets
+	cout << "\033[1;31m" << endl;
 	cout << "\n=== Adjusted Packet Delivery Statistics ===" << endl;
 	cout << "Total sent packets:        " << global_sent_packets.size() << endl;
 	cout << "Successfully received:     " << global_received_packets.size() << endl;
 	cout << "Still in transit:          " << total_buffered_packets << endl;
 	cout << "Total logged dropped pkts: " << total_dropped_pkts << endl;
 	cout << "Actually lost packets:     " << lost_packets.size() - total_buffered_packets - total_dropped_pkts << endl;
+	cout << "\033[0m" << endl;
 
 
 
