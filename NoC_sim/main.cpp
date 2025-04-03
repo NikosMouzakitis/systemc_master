@@ -1,4 +1,4 @@
-#include <systemc.h>
+#include "systemc.h"
 #include <set>
 #include "mesh_router.h"
 #include "mesh_packet.h"
@@ -7,9 +7,10 @@ const int MESH_SIZE = 8;
 
 #define ROUTER_BUFFER_SIZE	2 //affects the dropped packets observation
 #define TRAFFIC_INJECTION_RATE 23
-#define SIMULATION_TIME	 1000
+#define SIMULATION_TIME	 70
 #define PE_ROUTER_FIFO_SIZE 4
 #define ROUTER_ROUTER_FIFO_SIZE 4
+
 std::set<uint32_t> global_sent_packets; //storing sent packets sequence no.
 std::set<uint32_t> global_received_packets; //storing received packets sequence no.
 
@@ -40,7 +41,7 @@ SC_MODULE(ProcessingElement) {
 	}
 
 
-	
+
 	//random uniform traffic generation within' the Network on Chip.
 	void traffic_gen(void) {
 		static uint32_t seq_cnt = 0;
@@ -69,7 +70,7 @@ SC_MODULE(ProcessingElement) {
 			} while (pkt.dest_x == x_pos && pkt.dest_y == y_pos);
 
 			//timestamp it.
-			
+
 			pkt.timestamp = sc_time_stamp();
 			//forwarding packet to router.
 			out_port->write(pkt);
@@ -77,7 +78,7 @@ SC_MODULE(ProcessingElement) {
 			cout << this->name() << " sent packet to (" << pkt.dest_x << "," << pkt.dest_y << ") @ " << sc_time_stamp() << endl;
 		}
 	}
-	
+
 	//reception process of processing element.
 	void pe_process() {
 		// Receive packets
@@ -395,18 +396,30 @@ int sc_main(int argc, char* argv[]) {
 		for(int x = 0; x < MESH_SIZE; x++)
 			total_dropped_pkts += routers[x][y]->get_dropped_packets();
 
+
+
+
+
+	/// total stats regarding packets in the system.
 	// Updated packet loss statistics to account for buffered packets
-//	if (total_buffered_packets > 0) {
 	cout << "\n=== Adjusted Packet Delivery Statistics ===" << endl;
 	cout << "Total sent packets:        " << global_sent_packets.size() << endl;
 	cout << "Successfully received:     " << global_received_packets.size() << endl;
 	cout << "Still in transit:          " << total_buffered_packets << endl;
 	cout << "Total logged dropped pkts: " << total_dropped_pkts << endl;
 	cout << "Actually lost packets:     " << lost_packets.size() - total_buffered_packets - total_dropped_pkts << endl;
-//	}
 
 
-	// Cleanup
+
+	//configuration of simulation details.
+	cout << "\n=== Configuration                      ===" << endl;
+	cout << "router to router buffer size: " << ROUTER_BUFFER_SIZE
+	     << ",Traffic injection rate(ns): " << TRAFFIC_INJECTION_RATE
+	     << ",Runtime: " << SIMULATION_TIME	<< ",PE to router fifo size: " << PE_ROUTER_FIFO_SIZE << ",Router to router fifo size: " <<  ROUTER_ROUTER_FIFO_SIZE << endl;
+
+
+
+	// Cleanup of allocations
 	cout << "\n=== Cleaning Up ===" << endl;
 	// Cleanup North-South channels
 	for (int x = 0; x < MESH_SIZE; x++) {
@@ -423,5 +436,34 @@ int sc_main(int argc, char* argv[]) {
 			delete west_channels[x][y];
 		}
 	}
+
+	// Cleanup Routers
+	for (int y = 0; y < MESH_SIZE; y++) {
+		for (int x = 0; x < MESH_SIZE; x++) {
+			delete routers[x][y];
+		}
+	}
+
+// Cleanup Processing Elements (PEs)
+	for (int y = 0; y < MESH_SIZE; y++) {
+		for (int x = 0; x < MESH_SIZE; x++) {
+			delete pes[x][y];
+		}
+	}
+
+// Cleanup PE-to-router and router-to-PE FIFOs
+	for (int y = 0; y < MESH_SIZE; y++) {
+		for (int x = 0; x < MESH_SIZE; x++) {
+			// Delete PE-to-router FIFO
+			if (pes[x][y]->out_port.get_interface()) {
+				delete dynamic_cast<sc_fifo<MeshPacket>*>(pes[x][y]->out_port.get_interface());
+			}
+			// Delete router-to-PE FIFO
+			if (pes[x][y]->in_port.get_interface()) {
+				delete dynamic_cast<sc_fifo<MeshPacket>*>(pes[x][y]->in_port.get_interface());
+			}
+		}
+	}
+
 	return 0;
 }
