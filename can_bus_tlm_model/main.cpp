@@ -142,7 +142,6 @@ SC_MODULE(can_bus)
 			}
 						
 		}
-		
 
 
 		received_messages.clear(); //clear the buffer for next reception.

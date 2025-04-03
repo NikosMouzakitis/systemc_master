@@ -1,0 +1,11 @@
+1004  	push   %rbp
+1005  	mov    %rsp,%rbp
+1008  	mov    %edi,-0x14(%rbp)
+100b  	mov    %rsi,-0x20(%rbp)
+100f 	movl   $0x8,-0x8(%rbp)
+1016  	mov    -0x8(%rbp),%eax
+1019  	add    %eax,%eax
+101b  	sub    %eax,-0x4(%rbp)
+101e  	mov    $0x0,%eax
+1023  	pop    %rbp
+1024	retq   

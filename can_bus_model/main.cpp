@@ -260,6 +260,7 @@ SC_MODULE(can_bus)
 				tx_data.write(0x0);
 				bus_tx.write('0');	
 				ongoing_transmission =0;
+
 				for(int i = 0; i < nodes; i++)
 					access_granded[i].write('0');
 

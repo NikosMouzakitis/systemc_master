@@ -1,0 +1,8 @@
+all:
+	g++ -I/home/nicko/work/systemc-2.2.0/build/include \
+    -I/home/nicko/work/occn_3/include \
+    main.cpp \
+    -L/home/nicko/work/systemc-2.2.0/build/lib-linux64 \
+    -L/home/nicko/work/occn_3/lib-linux64 \
+    -W1,--start-group -lsystemc -loccn -lpthread -W1,--end-group -fpermissive -no-pie -Wno-write-strings \
+    -std=c++11 -o noc_simulation
