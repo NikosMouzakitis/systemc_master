@@ -1,3 +1,8 @@
+/*
+ * Mouzakitis N. 2025.
+ */
+
+
 #include "systemc.h"
 #include <set>
 #include "mesh_router.h"
@@ -5,7 +10,9 @@
 
 const int MESH_SIZE = 4;
 
-#define ROUTER_BUFFER_SIZE	10 //affects the dropped packets observation
+#define SC_ALLOW_DEPRECATED_IEEE_API 1
+
+#define ROUTER_BUFFER_SIZE	4 //affects the dropped packets observation
 #define TRAFFIC_INJECTION_RATE 43 
 #define SIMULATION_TIME	 7000
 #define PE_ROUTER_FIFO_SIZE 4
@@ -17,7 +24,7 @@ std::set<uint32_t> global_received_packets; //storing received packets sequence 
 #define UNI		1  //uniform random traffic pattern.
 #define BT		2  //bit complement traffic pattern.
 #define TRANSPOSE	3  //Transpose traffic pattern. //not-used since we don't send self messages.
-int traffic_pattern = BT;
+int traffic_pattern = UNI;
 
 
 // Simple Processing Element (PE) for testing

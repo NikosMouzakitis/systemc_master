@@ -1,5 +1,5 @@
 all:
-	g++ -std=c++17 -I/home/nicko/work/systemc-3.0.1/include main.cpp mesh_router.cpp -L/home/nicko/work/systemc-3.0.1/lib-linux64  -lsystemc  -fpermissive 
+	g++ -std=c++17 -I/home/nicko/work/systemc-3.0.1/include main.cpp mesh_router.cpp -L/home/nicko/work/systemc-3.0.1/lib-linux64  -lsystemc  -fpermissive -Wdeprecated-declarations
 
 run: 
 	./a.out | grep LATENC > noc_log.txt

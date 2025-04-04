@@ -1,3 +1,8 @@
+/*
+ * Mouzakitis N. 2025.
+ */
+
+
 #ifndef MESH_ROUTER_H
 #define MESH_ROUTER_H
 
@@ -6,6 +11,7 @@
 #include "mesh_packet.h"
 #include <set>
 
+#define SC_ALLOW_DEPRECATED_IEEE_API 1
 SC_MODULE(MeshRouter) {
 	// Router parameters
 	const uint32_t x_pos;
@@ -42,12 +48,12 @@ private:
     void pe_interface_process();
     void route_packet(const MeshPacket& packet);
     bool write_port_conditional(sc_port<sc_fifo_out_if<MeshPacket>>* port, const MeshPacket& packet);
-    bool MeshRouter::read_port_conditional(sc_port<sc_fifo_in_if<MeshPacket>>* port, MeshPacket& packet);
-    void MeshRouter::router_process(void);
+    bool read_port_conditional(sc_port<sc_fifo_in_if<MeshPacket>>* port, MeshPacket& packet);
+    void router_process(void);
     //if port is available to transmit a packet.
-    bool MeshRouter::is_port_available(sc_port<sc_fifo_out_if<MeshPacket>>* port);
-	void MeshRouter::route_packet_simultaneous(const MeshPacket& packet);
-	bool MeshRouter::try_simultaneous_tx(const MeshPacket& pkt, bool x_routed);
+    bool is_port_available(sc_port<sc_fifo_out_if<MeshPacket>>* port);
+    void route_packet_simultaneous(const MeshPacket& packet);
+    bool try_simultaneous_tx(const MeshPacket& pkt, bool x_routed);
 };
 
 #endif

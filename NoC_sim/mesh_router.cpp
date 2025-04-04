@@ -1,8 +1,14 @@
+/*
+ * Mouzakitis N. 2025.
+ */
+
+
 #include "mesh_router.h"
 
 #define PE_ROUTER_DELAY     2
 #define ROUTER_ROUTER_DELAY 5
 
+#define SC_ALLOW_DEPRECATED_IEEE_API 1
 MeshRouter::MeshRouter(sc_module_name name, uint32_t x, uint32_t y, uint32_t mesh_size, uint32_t buf_depth) :
 	sc_module(name), x_pos(x), y_pos(y), mesh_size(mesh_size), buffer_depth(buf_depth), in_north(nullptr), in_south(nullptr), in_east(nullptr), in_west(nullptr), out_north(nullptr), out_south(nullptr), out_east(nullptr), out_west(nullptr)
 {
