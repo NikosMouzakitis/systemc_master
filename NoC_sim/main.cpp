@@ -7,14 +7,16 @@
 #include <set>
 #include "mesh_router.h"
 #include "mesh_packet.h"
+#include "thermal_model.h"
+#include <random>
 
-const int MESH_SIZE = 2;
+const int MESH_SIZE = 4;
 
 #define SC_ALLOW_DEPRECATED_IEEE_API 1
 
-#define ROUTER_BUFFER_SIZE	4 //affects the dropped packets observation
-#define TRAFFIC_INJECTION_RATE 12 
-#define SIMULATION_TIME	 60
+#define ROUTER_BUFFER_SIZE	8 //affects the dropped packets observation
+#define TRAFFIC_INJECTION_RATE 10
+#define SIMULATION_TIME	 4000
 #define PE_ROUTER_FIFO_SIZE 4
 #define ROUTER_ROUTER_FIFO_SIZE 4
 
@@ -24,9 +26,40 @@ std::set<uint32_t> global_received_packets; //storing received packets sequence 
 #define UNI		1  //uniform random traffic pattern.
 #define BT		2  //bit complement traffic pattern.
 #define TRANSPOSE	3  //Transpose traffic pattern. //not-used since we don't send self messages.
+#define CUSTOM		4
+int traffic_pattern = CUSTOM;
 
-int traffic_pattern = UNI;
 
+double get_random_probability() {
+    static std::random_device rd;  // True random number generator
+    static std::mt19937 gen(rd()); // Mersenne Twister engine
+    static std::uniform_real_distribution<> dis(0.0, 1.0);
+    
+    return dis(gen);
+}
+
+void print_thermal_heatmap(const ThermalModel& thermal, int size) {
+    cout << "\nThermal Heatmap:\n";
+    cout << "     ";
+    
+    cout << "\t\t\t\t\t" ;
+    for (int x = 0; x < size; x++) cout << "X=" << x << "  ";
+    cout << "\n";
+
+    for (int y = 0; y < size; y++) {
+	cout << "\t\t\t\t\t" ;
+        cout << "Y=" << y << " ";
+        for (int x = 0; x < size; x++) {
+            double temp = thermal.get_temperature(x, y);
+            // Color coding based on temperature
+            if (temp > 70.0) cout << "\033[1;31m"; // Red
+            else if (temp > 60.0) cout << "\033[1;33m"; // Yellow
+            else cout << "\033[1;32m"; // Green
+            cout << std::fixed << std::setprecision(1) << temp << "°C\033[0m  ";
+        }
+        cout << endl;
+    }
+}
 
 // Simple Processing Element (PE) for testing
 SC_MODULE(ProcessingElement) {
@@ -52,6 +85,14 @@ SC_MODULE(ProcessingElement) {
 		static uint32_t seq_cnt = 0;
 		while (true) {
 			wait(TRAFFIC_INJECTION_RATE, SC_NS);  // Inject a packet every 100ns (adjust as needed)
+			
+			if(strcmp(this->name(),"PE_1_1") == 0)
+				continue;	
+			if(strcmp(this->name(),"PE_0_2") == 0)
+				continue;	
+			if(strcmp(this->name(),"PE_0_0") == 0)
+				continue;	
+
 
 			MeshPacket pkt;
 			pkt.source_x = x_pos;
@@ -71,6 +112,10 @@ SC_MODULE(ProcessingElement) {
 					pkt.dest_x = y_pos;
 					pkt.dest_y = x_pos;
 					break;
+				case(CUSTOM):
+					pkt.dest_x = 1;
+					pkt.dest_y = 1;
+					break;		
 				}
 			} while (pkt.dest_x == x_pos && pkt.dest_y == y_pos);
 
@@ -122,6 +167,9 @@ void inspect_sc_fifo(sc_fifo<MeshPacket>& fifo, const std::string& fifo_name) {
 }
 
 int sc_main(int argc, char* argv[]) {
+
+	ThermalModel thermal(MESH_SIZE);
+
 	MeshRouter* routers[MESH_SIZE][MESH_SIZE];
 	ProcessingElement* pes[MESH_SIZE][MESH_SIZE];
 
@@ -142,6 +190,13 @@ int sc_main(int argc, char* argv[]) {
 			cout << "Created " << pe_name << endl;
 		}
 	}
+	
+	//set ptrs of routers to thermal model.	
+	for(int y=0; y<MESH_SIZE; y++) {
+		for(int x=0; x<MESH_SIZE; x++) {
+			thermal.set_router_ptr(x, y, routers[x][y]);
+		}
+	}	
 
 	// Connect PEs to routers
 	cout << "\n=== Connecting PEs ===" << endl;
@@ -258,11 +313,22 @@ int sc_main(int argc, char* argv[]) {
 	}
 	cout << "=================================\n" << endl;
 
+	
+
 
 	// Start simulation
 	cout << "\n=== Starting Simulation ===" << endl;
-	sc_start(SIMULATION_TIME, SC_NS);
+	sc_time sim_time = sc_time(SIMULATION_TIME,SC_NS);
+	sc_time thermal_update_interval(100,SC_NS);
+	while(sc_time_stamp() < sim_time)
+	{
+		sc_start(thermal_update_interval);
+		thermal.update_temperatures();
+		print_thermal_heatmap(thermal, MESH_SIZE);
+	}
 
+	//sc_start(SIMULATION_TIME, SC_NS);
+	
 
 	// Check for lost packets after simulation ends
 	cout << "\n=== Packet Loss Report(Sent but not received) ===" << endl;
@@ -424,7 +490,7 @@ int sc_main(int argc, char* argv[]) {
 	cout << "router to router buffer size: " << ROUTER_BUFFER_SIZE
 	     << ",Traffic injection rate(ns): " << TRAFFIC_INJECTION_RATE
 	     << ",Runtime: " << SIMULATION_TIME	<< ",PE to router fifo size: " << PE_ROUTER_FIFO_SIZE << ",Router to router fifo size: " <<  ROUTER_ROUTER_FIFO_SIZE << endl;
-
+	print_thermal_heatmap(thermal, MESH_SIZE);
 
 
 	// Cleanup of allocations

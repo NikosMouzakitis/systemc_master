@@ -91,6 +91,7 @@ MeshRouter::~MeshRouter() {
 bool MeshRouter::push_to_buffer(std::deque<MeshPacket>& buffer, const MeshPacket& packet) {
 	if (buffer.size() < buffer_depth) {
 		buffer.push_back(packet);
+		count_packet();
 		return true;
 	}
 
@@ -106,6 +107,7 @@ bool MeshRouter::push_to_buffer(std::deque<MeshPacket>& buffer, const MeshPacket
 	cout << "]" << endl;
 
 	dropped_pkts++;
+	count_packet();
 	return false;
 }
 
@@ -115,6 +117,7 @@ bool MeshRouter::read_port_conditional(sc_port<sc_fifo_in_if<MeshPacket>>* port,
 	sc_fifo_in_if<MeshPacket>* fifo_if = port->operator->();
 	if (fifo_if->num_available() > 0) {
 		packet = fifo_if->read();
+		count_packet();
 		return true;
 	}
 	return false;
@@ -158,6 +161,7 @@ void MeshRouter::route_packet_simultaneous(const MeshPacket& packet) {
 
 	if (!x_routed && !y_routed) {
 		push_to_buffer(o_buffer, packet);
+		count_packet();
 	}
 
 	in_flight_packets.erase(packet.sequence); // Clear in-flight status
@@ -199,6 +203,7 @@ bool MeshRouter::write_port_conditional(sc_port<sc_fifo_out_if<MeshPacket>>* por
 
 		// Original packet is written unchanged
 		(*port)->write(packet);
+		count_packet();
 		return true;
 	}
 	return false;
@@ -215,6 +220,7 @@ void MeshRouter::pe_interface_process() {
 			cout <<"\t\t\t\t\t\t"<< this->name() << " received packet, seq: " << pkt.sequence << " from PE @ " << sc_time_stamp() << endl;
 			cout << "\t\t\t\t\t\t-------------------PE reception-end-------------------------------------" << endl;
 			push_to_buffer(o_buffer, pkt);
+			count_packet();
 		}
 
 		// Handle outgoing packets to PE
@@ -223,9 +229,11 @@ void MeshRouter::pe_interface_process() {
 			out_pe->write(pkt);
 			i_buffer.pop_front();
 			cout << this->name() << " DELIVERED packet, seq: " << pkt.sequence << " to PE @ " << sc_time_stamp() << endl;
+			count_packet();
 		}
 	}
 }
+
 
 void MeshRouter::router_process() {
 	while (true) {
@@ -238,6 +246,7 @@ void MeshRouter::router_process() {
 
 
 		if (in_north && read_port_conditional(in_north, packets[0])) {
+			count_packet();
 			validate_packet(packets[0]);
 			cout <<"\t\t\t\t"<< "-----------------"<<this->name()<<"-------------------------------------------"<<endl;
 			cout <<"\t\t\t\t"<< this->name() << " received packet seq:" << packets[0].sequence
@@ -248,6 +257,7 @@ void MeshRouter::router_process() {
 			has_packet[0] = true;
 		}
 		if (in_south && read_port_conditional(in_south, packets[1])) {
+			count_packet();
 			validate_packet(packets[1]);
 			cout <<"\t\t\t\t"<< "-----------------"<<this->name()<<"-------------------------------------------"<<endl;
 			cout <<"\t\t\t\t"<< this->name() << " received packet seq:" << packets[0].sequence
@@ -258,6 +268,7 @@ void MeshRouter::router_process() {
 		}
 		if (in_east && read_port_conditional(in_east, packets[2])) {
 			validate_packet(packets[2]);
+			count_packet();
 			cout <<"\t\t\t\t"<< "-----------------"<<this->name()<<"-------------------------------------------"<<endl;
 			cout <<"\t\t\t\t"<< this->name() << " received packet seq:" << packets[0].sequence
 			     << " from EAST (source:" << packets[2].source_x << "," << packets[2].source_y << ")"
@@ -267,6 +278,7 @@ void MeshRouter::router_process() {
 		}
 		if (in_west && read_port_conditional(in_west, packets[3])) {
 			validate_packet(packets[3]);
+			count_packet();
 			cout <<"\t\t\t\t"<< "-----------------"<<this->name()<<"-------------------------------------------"<<endl;
 			cout <<"\t\t\t\t"<< this->name() << " received packet seq:" << packets[0].sequence
 			     << " from WEST (source:" << packets[3].source_x << "," << packets[3].source_y << ")"
