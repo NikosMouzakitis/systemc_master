@@ -8,13 +8,13 @@
 #include "mesh_router.h"
 #include "mesh_packet.h"
 
-const int MESH_SIZE = 4;
+const int MESH_SIZE = 2;
 
 #define SC_ALLOW_DEPRECATED_IEEE_API 1
 
 #define ROUTER_BUFFER_SIZE	4 //affects the dropped packets observation
-#define TRAFFIC_INJECTION_RATE 43 
-#define SIMULATION_TIME	 7000
+#define TRAFFIC_INJECTION_RATE 12 
+#define SIMULATION_TIME	 60
 #define PE_ROUTER_FIFO_SIZE 4
 #define ROUTER_ROUTER_FIFO_SIZE 4
 
@@ -24,6 +24,7 @@ std::set<uint32_t> global_received_packets; //storing received packets sequence 
 #define UNI		1  //uniform random traffic pattern.
 #define BT		2  //bit complement traffic pattern.
 #define TRANSPOSE	3  //Transpose traffic pattern. //not-used since we don't send self messages.
+
 int traffic_pattern = UNI;
 
 
@@ -45,8 +46,6 @@ SC_MODULE(ProcessingElement) {
 		x_pos = x;
 		y_pos = y;
 	}
-
-
 
 	//random uniform traffic generation within' the Network on Chip.
 	void traffic_gen(void) {

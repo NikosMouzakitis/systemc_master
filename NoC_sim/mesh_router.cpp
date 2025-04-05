@@ -4,13 +4,46 @@
 
 
 #include "mesh_router.h"
+#include <stdlib.h>
 
 #define PE_ROUTER_DELAY     2
 #define ROUTER_ROUTER_DELAY 5
 
 #define SC_ALLOW_DEPRECATED_IEEE_API 1
+int msize;
+void validate_packet(MeshPacket& pkt) {
+    if(pkt.dest_x >= msize || pkt.dest_y >= msize) {
+        cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!CORRUPTED PACKET! Seq:" << pkt.sequence 
+             << " Bad dest: (" << pkt.dest_x << "," << pkt.dest_y << ")\n";
+	while(1);
+    }
+}
+
+void MeshRouter::refresh_tx_tracking(void) {
+	for(int i = 0; i < 4; i++)
+		port_already_tx[i] = false;
+}
+
+void MeshRouter::init_tx_tracking(void) {
+	port_already_tx = (bool*)malloc(4*sizeof(bool));
+
+	if(port_already_tx == NULL)
+	{
+		cout << "malloc error" <<endl;
+		exit(-1);
+	}
+
+	for(int i = 0; i < 4; i++)
+		port_already_tx[i] = false;
+
+}
+
+void MeshRouter::clear_ports(void)
+{
+	refresh_tx_tracking();
+}
 MeshRouter::MeshRouter(sc_module_name name, uint32_t x, uint32_t y, uint32_t mesh_size, uint32_t buf_depth) :
-	sc_module(name), x_pos(x), y_pos(y), mesh_size(mesh_size), buffer_depth(buf_depth), in_north(nullptr), in_south(nullptr), in_east(nullptr), in_west(nullptr), out_north(nullptr), out_south(nullptr), out_east(nullptr), out_west(nullptr)
+	sc_module(name), x_pos(x), y_pos(y), mesh_size(mesh_size), buffer_depth(buf_depth), in_north(nullptr), in_south(nullptr), in_east(nullptr), in_west(nullptr), out_north(nullptr), out_south(nullptr), out_east(nullptr), out_west(nullptr), clear_event("clear-event")
 {
 	// Create only the needed and used ports for each
 	// router based on its position of x and y.
@@ -34,8 +67,14 @@ MeshRouter::MeshRouter(sc_module_name name, uint32_t x, uint32_t y, uint32_t mes
 		in_west = new sc_port<sc_fifo_in_if<MeshPacket>>();
 		cout << this->name() << " creating in/out WEST" << endl;
 	}
+	
+	init_tx_tracking();
+	msize = mesh_size;
 	SC_THREAD(router_process);
 	SC_THREAD(pe_interface_process);
+	SC_METHOD(clear_ports);
+	sensitive << clear_event;
+	dont_initialize();
 }
 
 MeshRouter::~MeshRouter() {
@@ -135,10 +174,22 @@ bool MeshRouter::write_port_conditional(sc_port<sc_fifo_out_if<MeshPacket>>* por
 		int next_hop_x = x_pos;
 		int next_hop_y = y_pos;
 
-		if (port == out_north)       next_hop_y = y_pos + 1;
-		else if (port == out_south)  next_hop_y = y_pos - 1;
-		else if (port == out_east)   next_hop_x = x_pos + 1;
-		else if (port == out_west)   next_hop_x = x_pos - 1;
+		if (port == out_north && (port_already_tx[0] == false)) {
+		 	next_hop_y = y_pos + 1;
+			port_already_tx[0] = true;	
+		} else if (port == out_south && (port_already_tx[2] == false)) {
+		      	next_hop_y = y_pos - 1;
+			port_already_tx[2] = true;	
+		} else if (port == out_east && (port_already_tx[1] == false) ) {
+		     	next_hop_x = x_pos + 1;
+			port_already_tx[1] = true;	
+		} else if (port == out_west && (port_already_tx[3] == false) ) {
+		     	next_hop_x = x_pos - 1;
+			port_already_tx[3] = true;	
+		} else {
+			cout << "\033[1;31m NOT ALLOWED@ " << this->name() << " " << sc_time_stamp() << " DEST: ("<<display_pkt.dest_x << ","<<display_pkt.dest_y<<") seq: " << display_pkt.sequence << " \033[0m (only one tx per output interface per simulation step." << endl;
+			return false;
+		}
 
 		// Original packet is untouched - we only use its const copy for display
 		cout << this->name() << " forwarding seq:" << display_pkt.sequence
@@ -178,6 +229,7 @@ void MeshRouter::pe_interface_process() {
 
 void MeshRouter::router_process() {
 	while (true) {
+		refresh_tx_tracking();
 		wait(ROUTER_ROUTER_DELAY, SC_NS);
 
 		// Process all input ports in parallel
@@ -186,6 +238,7 @@ void MeshRouter::router_process() {
 
 
 		if (in_north && read_port_conditional(in_north, packets[0])) {
+			validate_packet(packets[0]);
 			cout <<"\t\t\t\t"<< "-----------------"<<this->name()<<"-------------------------------------------"<<endl;
 			cout <<"\t\t\t\t"<< this->name() << " received packet seq:" << packets[0].sequence
 			     << " from NORTH (source:" << packets[0].source_x << "," << packets[0].source_y << ")"
@@ -195,6 +248,7 @@ void MeshRouter::router_process() {
 			has_packet[0] = true;
 		}
 		if (in_south && read_port_conditional(in_south, packets[1])) {
+			validate_packet(packets[1]);
 			cout <<"\t\t\t\t"<< "-----------------"<<this->name()<<"-------------------------------------------"<<endl;
 			cout <<"\t\t\t\t"<< this->name() << " received packet seq:" << packets[0].sequence
 			     << " from SOUTH (source:" << packets[1].source_x << "," << packets[1].source_y << ")"
@@ -203,6 +257,7 @@ void MeshRouter::router_process() {
 			has_packet[1] = true;
 		}
 		if (in_east && read_port_conditional(in_east, packets[2])) {
+			validate_packet(packets[2]);
 			cout <<"\t\t\t\t"<< "-----------------"<<this->name()<<"-------------------------------------------"<<endl;
 			cout <<"\t\t\t\t"<< this->name() << " received packet seq:" << packets[0].sequence
 			     << " from EAST (source:" << packets[2].source_x << "," << packets[2].source_y << ")"
@@ -211,6 +266,7 @@ void MeshRouter::router_process() {
 			has_packet[2] = true;
 		}
 		if (in_west && read_port_conditional(in_west, packets[3])) {
+			validate_packet(packets[3]);
 			cout <<"\t\t\t\t"<< "-----------------"<<this->name()<<"-------------------------------------------"<<endl;
 			cout <<"\t\t\t\t"<< this->name() << " received packet seq:" << packets[0].sequence
 			     << " from WEST (source:" << packets[3].source_x << "," << packets[3].source_y << ")"
@@ -253,9 +309,10 @@ void MeshRouter::router_process() {
 				route_packet_simultaneous(pkt);
 			}
 		}
+		
+		clear_event.notify(SC_ZERO_TIME);
 
-
-
+		/*
 		if (!i_buffer.empty()) {
 			MeshPacket pkt = i_buffer.front();
 			if (pkt.dest_x == x_pos && pkt.dest_y == y_pos) {
@@ -265,8 +322,9 @@ void MeshRouter::router_process() {
 				i_buffer.pop_front();
 			}
 		}
-
-		wait(SC_ZERO_TIME); // Yield to other processes
+		*/
+		
+//		wait(SC_ZERO_TIME); // Yield to other processes
 	}
 }
 

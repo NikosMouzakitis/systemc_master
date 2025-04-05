@@ -42,8 +42,8 @@ SC_MODULE(MeshRouter) {
 	// Public getter for dropped_pkts
 	uint32_t get_dropped_packets() const {return dropped_pkts;}
 private:
-    sc_event i_buffer_event, o_buffer_event;
-
+    sc_event i_buffer_event, o_buffer_event, clear_event;
+    bool * port_already_tx; //0-N 1-E 2-S 3-W
     bool push_to_buffer(std::deque<MeshPacket>& buffer, const MeshPacket& packet);
     void pe_interface_process();
     void route_packet(const MeshPacket& packet);
@@ -54,6 +54,9 @@ private:
     bool is_port_available(sc_port<sc_fifo_out_if<MeshPacket>>* port);
     void route_packet_simultaneous(const MeshPacket& packet);
     bool try_simultaneous_tx(const MeshPacket& pkt, bool x_routed);
+    void refresh_tx_tracking(void);
+    void init_tx_tracking(void);
+    void clear_ports(void);
 };
 
 #endif
