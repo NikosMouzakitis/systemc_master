@@ -9,8 +9,8 @@ void ThermalModel::set_router_ptr(int x, int y, MeshRouter* router) {
     router_ptrs[y][x] = router;
 }
 void ThermalModel::update_temperatures() {
-    const double MAX_HEATING = 2.0; // Max °C increase per update
-    const double COOLING = 0.1;     // Cooling rate
+    const double MAX_HEATING = 0.001; // Max °C increase per update
+    const double COOLING = 0.00005;     // Cooling rate
     
     for(int y=0; y<router_temps.size(); y++) {
         for(int x=0; x<router_temps[y].size(); x++) {
@@ -23,6 +23,7 @@ void ThermalModel::update_temperatures() {
 		cout << "for " << y << " , " << x << endl;
                 cout <<  " activity " << activity << endl; 
                 cout <<  " router_temp1 " << router_temps[y][x] << endl; 
+
                 // Apply heating proportional to activity
                 router_temps[y][x] += activity * MAX_HEATING;
                  
@@ -32,7 +33,7 @@ void ThermalModel::update_temperatures() {
                 cout << " router_temp3 " << router_temps[y][x] << endl; 
                 
                 // Clamp to reasonable values
-                router_temps[y][x] = std::clamp(router_temps[y][x], AMBIENT, MAX_TEMP);
+            //    router_temps[y][x] = std::clamp(router_temps[y][x], AMBIENT, MAX_TEMP);
                 cout << " router_temp4 " << router_temps[y][x] << endl; 
             }
             

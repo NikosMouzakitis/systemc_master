@@ -8,4 +8,4 @@ analysis:
 extended: 
 	python3 analysis2.py
 clean:
-	rm a.out  noc_log.txt noc_dashboard.html path_statistics.csv noc_analysis.csv noc_analysis_results.csv
+	rm a.out  noc_log.txt noc_dashboard.html path_statistics.csv noc_analysis.csv noc_analysis_results.csv thermal_data.csv

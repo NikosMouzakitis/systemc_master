@@ -9,14 +9,17 @@
 #include "mesh_packet.h"
 #include "thermal_model.h"
 #include <random>
+#include <fstream>
+#include <iomanip>
 
-const int MESH_SIZE = 4;
+
+const int MESH_SIZE = 3;
 
 #define SC_ALLOW_DEPRECATED_IEEE_API 1
 
 #define ROUTER_BUFFER_SIZE	8 //affects the dropped packets observation
-#define TRAFFIC_INJECTION_RATE 10
-#define SIMULATION_TIME	 4000
+#define TRAFFIC_INJECTION_RATE 14
+#define SIMULATION_TIME	 40000
 #define PE_ROUTER_FIFO_SIZE 4
 #define ROUTER_ROUTER_FIFO_SIZE 4
 
@@ -27,7 +30,7 @@ std::set<uint32_t> global_received_packets; //storing received packets sequence 
 #define BT		2  //bit complement traffic pattern.
 #define TRANSPOSE	3  //Transpose traffic pattern. //not-used since we don't send self messages.
 #define CUSTOM		4
-int traffic_pattern = CUSTOM;
+int traffic_pattern = UNI;
 
 
 double get_random_probability() {
@@ -39,15 +42,19 @@ double get_random_probability() {
 }
 
 void print_thermal_heatmap(const ThermalModel& thermal, int size) {
-    cout << "\nThermal Heatmap:\n";
-    cout << "     ";
+    static std::ofstream thermal_log("thermal_data.csv", std::ios::app);
+    static bool header_written = false;
+    double current_time = sc_time_stamp().to_seconds();
     
+    // Print to console (your original code)
+    cout << "\n\t\t\t\t\t\t Thermal Heatmap: @ " << sc_time_stamp() <<"\n";
+    cout << "     ";
     cout << "\t\t\t\t\t" ;
-    for (int x = 0; x < size; x++) cout << "X=" << x << "  ";
+    for (int x = 0; x < size; x++) cout << "    X=" << x << "  ";
     cout << "\n";
 
     for (int y = 0; y < size; y++) {
-	cout << "\t\t\t\t\t" ;
+        cout << "\t\t\t\t\t" ;
         cout << "Y=" << y << " ";
         for (int x = 0; x < size; x++) {
             double temp = thermal.get_temperature(x, y);
@@ -59,8 +66,27 @@ void print_thermal_heatmap(const ThermalModel& thermal, int size) {
         }
         cout << endl;
     }
+    
+    // Log data to CSV file
+    if (!header_written) {
+        thermal_log << "Time";
+        for (int y = 0; y < size; y++) {
+            for (int x = 0; x < size; x++) {
+                thermal_log << ",Core_" << x << "_" << y;
+            }
+        }
+        thermal_log << "\n";
+        header_written = true;
+    }
+    
+    thermal_log << current_time;
+    for (int y = 0; y < size; y++) {
+        for (int x = 0; x < size; x++) {
+            thermal_log << "," << thermal.get_temperature(x, y);
+        }
+    }
+    thermal_log << "\n";
 }
-
 // Simple Processing Element (PE) for testing
 SC_MODULE(ProcessingElement) {
 
@@ -85,14 +111,27 @@ SC_MODULE(ProcessingElement) {
 		static uint32_t seq_cnt = 0;
 		while (true) {
 			wait(TRAFFIC_INJECTION_RATE, SC_NS);  // Inject a packet every 100ns (adjust as needed)
-			
-			if(strcmp(this->name(),"PE_1_1") == 0)
+		/*		
+			if(strcmp(this->name(),"PE_0_3") == 0)
 				continue;	
 			if(strcmp(this->name(),"PE_0_2") == 0)
 				continue;	
-			if(strcmp(this->name(),"PE_0_0") == 0)
+			if(strcmp(this->name(),"PE_0_1") == 0)
 				continue;	
+			if(strcmp(this->name(),"PE_0_0") == 0)
+				continue;
+			if(strcmp(this->name(),"PE_1_3") == 0)
+				continue;	
+			if(strcmp(this->name(),"PE_1_2") == 0)
+				continue;	
+			if(strcmp(this->name(),"PE_1_1") == 0)
+				continue;	
+			if(strcmp(this->name(),"PE_1_0") == 0)
+				continue;
+		*/	
 
+			if( (traffic_pattern == CUSTOM) && (strcmp(this->name(),"PE_1_1") == 0))
+				continue;
 
 			MeshPacket pkt;
 			pkt.source_x = x_pos;
@@ -475,12 +514,12 @@ int sc_main(int argc, char* argv[]) {
 	// Updated packet loss statistics to account for buffered packets
 //	cout << "\033[1;31m" << endl;//red color
 	cout << "\033[38;5;202m" << endl;
-	cout << "\n=== Adjusted Packet Delivery Statistics ===" << endl;
-	cout << "Total sent packets:        " << global_sent_packets.size() << endl;
-	cout << "Successfully received:     " << global_received_packets.size() << endl;
-	cout << "Still in transit:          " << total_buffered_packets << endl;
-	cout << "Total logged dropped pkts: " << total_dropped_pkts << endl;
-	cout << "Actually lost packets:     " << lost_packets.size() - total_buffered_packets - total_dropped_pkts << endl;
+	cout << "\n\t\t\t\t\t=== Adjusted Packet Delivery Statistics ===" << endl;
+	cout << "\t\t\t\t\tTotal sent packets:        " << global_sent_packets.size() << endl;
+	cout << "\t\t\t\t\tSuccessfully received:     " << global_received_packets.size() << endl;
+	cout << "\t\t\t\t\tStill in transit:          " << total_buffered_packets << endl;
+	cout << "\t\t\t\t\tTotal logged dropped pkts: " << total_dropped_pkts << endl;
+	cout << "\t\t\t\t\tActually lost packets:     " << lost_packets.size() - total_buffered_packets - total_dropped_pkts << endl;
 	cout << "\033[0m" << endl;
 
 

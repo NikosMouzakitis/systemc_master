@@ -74,7 +74,7 @@ private:
 				double current_rate = packet_count / elapsed_sec;
 				// Normalize and smooth
 				activity_factor = 0.3 * (current_rate/MAX_PACKET_RATE) + 0.7 * activity_factor;
-				activity_factor = std::clamp(activity_factor, 0.0, 1.0);
+			//	activity_factor = std::clamp(activity_factor, 0.0, 1.0);
 			}
 		}
 	

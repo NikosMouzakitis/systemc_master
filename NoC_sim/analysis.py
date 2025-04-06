@@ -4,7 +4,74 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import LogNorm
 from mpl_toolkits.mplot3d import Axes3D
-SIZE = 5
+import seaborn as sns
+from io import StringIO
+
+SIZE = 3
+
+
+def parse_thermal_data(csv_file):
+    """Generic parser for any mesh size"""
+    with open(csv_file, 'r') as f:
+        content = f.read()
+
+    # Find all data blocks
+    blocks = re.split(r'Time,Core_\d+_\d+(?:,Core_\d+_\d+)*\n', content)
+    blocks = [b.strip() for b in blocks if b.strip()]
+
+    # Find all core positions from header
+    header = re.search(r'Time,(Core_\d+_\d+(?:,Core_\d+_\d+)*)\n', content).group(1)
+    core_columns = header.split(',')
+    
+    # Process all data blocks
+    data = []
+    for block in blocks:
+        for line in block.split('\n'):
+            if line.strip():
+                values = line.split(',')
+                timestamp = float(values[0])
+                temps = {core: float(temp) for core, temp in zip(core_columns, values[1:])}
+                data.append({'Time': timestamp, **temps})
+
+    return pd.DataFrame(data).sort_values('Time')
+
+def visualize_thermal_data(df):
+    """Generic visualization for any mesh size"""
+    # Melt data for plotting
+    melted = df.melt(id_vars=['Time'], var_name='Core', value_name='Temperature')
+    
+    # Create figure
+    plt.figure(figsize=(14, 8))
+    
+    # Plot all cores
+    sns.lineplot(data=melted, x='Time', y='Temperature', hue='Core',
+                linewidth=1.5, alpha=0.8)
+    
+    # Formatting
+    plt.title('NoC Routers Temperature Over Time', fontsize=16)
+    plt.ylabel('Temperature (°C)', fontsize=14)
+    plt.xlabel('Time (s)', fontsize=14)
+    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', title='router')
+    
+    # Critical temperature markers
+    plt.axhline(y=70, color='red', linestyle='--', alpha=0.3, label='Critical (70°C)')
+    plt.axhline(y=60, color='orange', linestyle='--', alpha=0.3, label='Warning (60°C)')
+    
+    plt.tight_layout()
+    plt.show()
+
+    # Additional heatmap visualization
+    plt.figure(figsize=(12, 6))
+    pivot_df = df.set_index('Time')
+    sns.heatmap(pivot_df.T, cmap='coolwarm', center=60)
+    plt.title('Temperature Heatmap Over Time')
+    plt.ylabel('Router')
+    plt.xlabel('Time (s)')
+    plt.tight_layout()
+    plt.show()
+
+
+
 def parse_noc_log(log_file):
     """Parse NoC simulation log into structured data"""
     data = []
@@ -146,6 +213,7 @@ def plot_3d_latency(df):
     plt.tight_layout()
     plt.show()
 
+
 def main():
     # Step 1: Parse the log file
     log_file = 'noc_log.txt'  # Change to your log file path
@@ -165,11 +233,12 @@ def main():
     plot_path_heatmap(df)
     plot_throughput(df)
     plot_latency_vs_hops(df)
-    plot_3d_latency(df)
-    
-    # Save analyzed data to CSV
-    df.to_csv('noc_analysis_results.csv', index=False)
-    print("\nAnalysis results saved to 'noc_analysis_results.csv'")
+
+
+    thermal_df = parse_thermal_data('thermal_data.csv')
+    print(f"Data loaded successfully for {len(thermal_df.columns)-1} cores")
+    print(f"Time range: {thermal_df['Time'].min()} to {thermal_df['Time'].max()} seconds")
+    visualize_thermal_data(thermal_df)
 
 if __name__ == "__main__":
     main()

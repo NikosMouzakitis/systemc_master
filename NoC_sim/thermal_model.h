@@ -16,8 +16,8 @@ public:
 
 private:
     const double AMBIENT = 45.0;
-    const double MAX_TEMP = 110.0;
-    const double HEAT_TRANSFER_COEFF = 0.02;
+    const double MAX_TEMP = 150.0;
+    const double HEAT_TRANSFER_COEFF = 0.005;
     
     std::vector<std::vector<double>> router_temps;
     std::vector<std::vector<MeshRouter*>> router_ptrs;
