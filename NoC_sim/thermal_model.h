@@ -17,7 +17,7 @@ public:
 private:
     const double AMBIENT = 45.0;
     const double MAX_TEMP = 150.0;
-    const double HEAT_TRANSFER_COEFF = 0.005;
+    const double HEAT_TRANSFER_COEFF = 0.0005;
     const double MAX_HEATING = 	 0.00028;      // Max °C increase per update
     const double COOLING =	 0.00085;     // Cooling rate
  

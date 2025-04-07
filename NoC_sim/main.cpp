@@ -4,16 +4,22 @@
 
 
 #include "systemc.h"
-#include <set>
 #include "mesh_router.h"
 #include "mesh_packet.h"
+#include "mesh.cpp"
 #include "thermal_model.h"
+#include <set>
 #include <random>
 #include <fstream>
 #include <iomanip>
+#include <map>
+#include <iostream>
+#include <vector>
 
+using namespace std;
+//extern const int MESH_SIZE = 3;
 
-const int MESH_SIZE = 3;
+Mesh m; //mesh for controlling cores-memories.
 
 #define SC_ALLOW_DEPRECATED_IEEE_API 1
 
@@ -33,7 +39,6 @@ std::set<uint32_t> global_sent_packets; //storing sent packets sequence no.
 std::set<uint32_t> global_received_packets; //storing received packets sequence no.
 
 int traffic_pattern = UNI;
-
 
 // incorporation of data from PARSEC-PINTOOL
 struct MemoryAccess {
@@ -117,6 +122,10 @@ void print_thermal_heatmap(const ThermalModel& thermal, int size) {
 	}
 	thermal_log << "\n";
 }
+
+
+/////////////////////SPLITTING PROCESSING ELEMENTS into cores and memories /////////////
+
 // Simple Processing Element (PE) for testing
 SC_MODULE(ProcessingElement) {
 
@@ -129,6 +138,12 @@ SC_MODULE(ProcessingElement) {
 
 
 	SC_CTOR(ProcessingElement) : x_pos(0), y_pos(0), use_trace(false), core_id(-1) {
+
+		m.assignCore(0,0,0);
+		m.assignMemory(0,1,101);
+		m.assignMemory(0,2,102);
+		//m.displayMesh();	
+		m.splitMemoryAddresses(0x800000000000);
 
 		SC_THREAD(pe_process);
 		SC_THREAD(traffic_gen);
@@ -215,7 +230,7 @@ SC_MODULE(ProcessingElement) {
 
 		static uint32_t seq_cnt = 0;
 		size_t trace_index = 0;
-
+	
 		while (true) {
 			// If we're not using trace traffic, you can skip or run your old synthetic generator
 			if (!use_trace) {
@@ -240,10 +255,23 @@ SC_MODULE(ProcessingElement) {
 			pkt.source_x = x_pos;
 			pkt.source_y = y_pos;
 			pkt.sequence = seq_cnt++;
-
+		/*	
+			cout << std::hex << access.address <<endl;
+			cout << std::hex << (access.address >>3) <<endl;
+			cout << std::hex << (access.address >>6) <<endl;
+			unsigned long tt = access.address;
+			cout << std::hex << tt <<endl;
+			while(1);
+		*/
 			// Address to destination mapping
-			pkt.dest_x = (access.address >> 3) % MESH_SIZE;
-			pkt.dest_y = (access.address >> 6) % MESH_SIZE;
+//			pkt.dest_x = (access.address >> 3) % MESH_SIZE;
+//			pkt.dest_y = (access.address >> 6) % MESH_SIZE;
+			
+			int mem_id = m.getMemoryIdByAddress(access.address);
+			auto dest_coords = m.getCoordinatesByMemoryId(mem_id);
+
+			pkt.dest_x = dest_coords.first;
+			pkt.dest_y = dest_coords.second;
 
 			if (pkt.dest_x == x_pos && pkt.dest_y == y_pos) {
 				wait(TRAFFIC_INJECTION_RATE, SC_NS);
@@ -313,6 +341,9 @@ int sc_main(int argc, char* argv[]) {
 	cout << "=== Initializing Network ===" << endl;
 
 	load_trace_from_file("noc_trace.out");
+	
+
+//	while(1);
 
 	// Initialize routers and PEs
 	for (int y = 0; y < MESH_SIZE; y++) {
