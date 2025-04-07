@@ -9,9 +9,7 @@ void ThermalModel::set_router_ptr(int x, int y, MeshRouter* router) {
     router_ptrs[y][x] = router;
 }
 void ThermalModel::update_temperatures() {
-    const double MAX_HEATING = 0.001; // Max °C increase per update
-    const double COOLING = 0.00005;     // Cooling rate
-    
+   
     for(int y=0; y<router_temps.size(); y++) {
         for(int x=0; x<router_temps[y].size(); x++) {
             if(router_ptrs[y][x]) {

@@ -19,73 +19,103 @@ const int MESH_SIZE = 3;
 
 #define ROUTER_BUFFER_SIZE	8 //affects the dropped packets observation
 #define TRAFFIC_INJECTION_RATE 14
-#define SIMULATION_TIME	 40000
+#define SIMULATION_TIME	 80000
 #define PE_ROUTER_FIFO_SIZE 4
 #define ROUTER_ROUTER_FIFO_SIZE 4
 
-std::set<uint32_t> global_sent_packets; //storing sent packets sequence no.
-std::set<uint32_t> global_received_packets; //storing received packets sequence no.
-
+//traffic patterns
 #define UNI		1  //uniform random traffic pattern.
 #define BT		2  //bit complement traffic pattern.
 #define TRANSPOSE	3  //Transpose traffic pattern. //not-used since we don't send self messages.
 #define CUSTOM		4
+
+std::set<uint32_t> global_sent_packets; //storing sent packets sequence no.
+std::set<uint32_t> global_received_packets; //storing received packets sequence no.
+
 int traffic_pattern = UNI;
 
 
+// incorporation of data from PARSEC-PINTOOL
+struct MemoryAccess {
+	int id;
+	int core_id;
+	char access_type; // 'R' or 'W'
+	uint64_t address;
+};
+
+// This will hold all memory access traces.
+std::vector<MemoryAccess> trace_data;
+
+void load_trace_from_file(const std::string& filename) {
+	std::ifstream file(filename);
+	if (!file.is_open()) {
+		std::cerr << "Failed to open trace file: " << filename << std::endl;
+		return;
+	}
+
+	MemoryAccess access;
+	while (file >> access.id >> access.core_id >> access.access_type >> std::hex >> access.address) {
+		trace_data.push_back(access);
+	}
+
+	std::cout << "Loaded " << trace_data.size() << " memory accesses." << std::endl;
+}
+
+
+
 double get_random_probability() {
-    static std::random_device rd;  // True random number generator
-    static std::mt19937 gen(rd()); // Mersenne Twister engine
-    static std::uniform_real_distribution<> dis(0.0, 1.0);
-    
-    return dis(gen);
+	static std::random_device rd;  // True random number generator
+	static std::mt19937 gen(rd()); // Mersenne Twister engine
+	static std::uniform_real_distribution<> dis(0.0, 1.0);
+
+	return dis(gen);
 }
 
 void print_thermal_heatmap(const ThermalModel& thermal, int size) {
-    static std::ofstream thermal_log("thermal_data.csv", std::ios::app);
-    static bool header_written = false;
-    double current_time = sc_time_stamp().to_seconds();
-    
-    // Print to console (your original code)
-    cout << "\n\t\t\t\t\t\t Thermal Heatmap: @ " << sc_time_stamp() <<"\n";
-    cout << "     ";
-    cout << "\t\t\t\t\t" ;
-    for (int x = 0; x < size; x++) cout << "    X=" << x << "  ";
-    cout << "\n";
+	static std::ofstream thermal_log("thermal_data.csv", std::ios::app);
+	static bool header_written = false;
+	double current_time = sc_time_stamp().to_seconds();
 
-    for (int y = 0; y < size; y++) {
-        cout << "\t\t\t\t\t" ;
-        cout << "Y=" << y << " ";
-        for (int x = 0; x < size; x++) {
-            double temp = thermal.get_temperature(x, y);
-            // Color coding based on temperature
-            if (temp > 70.0) cout << "\033[1;31m"; // Red
-            else if (temp > 60.0) cout << "\033[1;33m"; // Yellow
-            else cout << "\033[1;32m"; // Green
-            cout << std::fixed << std::setprecision(1) << temp << "°C\033[0m  ";
-        }
-        cout << endl;
-    }
-    
-    // Log data to CSV file
-    if (!header_written) {
-        thermal_log << "Time";
-        for (int y = 0; y < size; y++) {
-            for (int x = 0; x < size; x++) {
-                thermal_log << ",Core_" << x << "_" << y;
-            }
-        }
-        thermal_log << "\n";
-        header_written = true;
-    }
-    
-    thermal_log << current_time;
-    for (int y = 0; y < size; y++) {
-        for (int x = 0; x < size; x++) {
-            thermal_log << "," << thermal.get_temperature(x, y);
-        }
-    }
-    thermal_log << "\n";
+	// Print to console (your original code)
+	cout << "\n\t\t\t\t\t\t Thermal Heatmap: @ " << sc_time_stamp() <<"\n";
+	cout << "     ";
+	cout << "\t\t\t\t\t" ;
+	for (int x = 0; x < size; x++) cout << "    X=" << x << "  ";
+	cout << "\n";
+
+	for (int y = 0; y < size; y++) {
+		cout << "\t\t\t\t\t" ;
+		cout << "Y=" << y << " ";
+		for (int x = 0; x < size; x++) {
+			double temp = thermal.get_temperature(x, y);
+			// Color coding based on temperature
+			if (temp > 70.0) cout << "\033[1;31m"; // Red
+			else if (temp > 60.0) cout << "\033[1;33m"; // Yellow
+			else cout << "\033[1;32m"; // Green
+			cout << std::fixed << std::setprecision(1) << temp << "°C\033[0m  ";
+		}
+		cout << endl;
+	}
+
+	// Log data to CSV file
+	if (!header_written) {
+		thermal_log << "Time";
+		for (int y = 0; y < size; y++) {
+			for (int x = 0; x < size; x++) {
+				thermal_log << ",Core_" << x << "_" << y;
+			}
+		}
+		thermal_log << "\n";
+		header_written = true;
+	}
+
+	thermal_log << current_time;
+	for (int y = 0; y < size; y++) {
+		for (int x = 0; x < size; x++) {
+			thermal_log << "," << thermal.get_temperature(x, y);
+		}
+	}
+	thermal_log << "\n";
 }
 // Simple Processing Element (PE) for testing
 SC_MODULE(ProcessingElement) {
@@ -94,7 +124,11 @@ SC_MODULE(ProcessingElement) {
 	sc_port<sc_fifo_out_if<MeshPacket>> out_port;
 	uint32_t x_pos, y_pos;
 
-	SC_CTOR(ProcessingElement) : x_pos(0), y_pos(0) {
+	bool use_trace;
+	int core_id;
+
+
+	SC_CTOR(ProcessingElement) : x_pos(0), y_pos(0), use_trace(false), core_id(-1) {
 
 		SC_THREAD(pe_process);
 		SC_THREAD(traffic_gen);
@@ -106,65 +140,129 @@ SC_MODULE(ProcessingElement) {
 		y_pos = y;
 	}
 
+	void set_core_id(int id) {
+		core_id = id;
+	}
 	//random uniform traffic generation within' the Network on Chip.
-	void traffic_gen(void) {
-		static uint32_t seq_cnt = 0;
-		while (true) {
-			wait(TRAFFIC_INJECTION_RATE, SC_NS);  // Inject a packet every 100ns (adjust as needed)
-		/*		
-			if(strcmp(this->name(),"PE_0_3") == 0)
-				continue;	
-			if(strcmp(this->name(),"PE_0_2") == 0)
-				continue;	
-			if(strcmp(this->name(),"PE_0_1") == 0)
-				continue;	
-			if(strcmp(this->name(),"PE_0_0") == 0)
-				continue;
-			if(strcmp(this->name(),"PE_1_3") == 0)
-				continue;	
-			if(strcmp(this->name(),"PE_1_2") == 0)
-				continue;	
-			if(strcmp(this->name(),"PE_1_1") == 0)
-				continue;	
-			if(strcmp(this->name(),"PE_1_0") == 0)
-				continue;
-		*/	
+	/*
+		void traffic_gen(void) {
+			static uint32_t seq_cnt = 0;
+			size_t trace_index = 0;
+			while (true) {
 
-			if( (traffic_pattern == CUSTOM) && (strcmp(this->name(),"PE_1_1") == 0))
+				wait(TRAFFIC_INJECTION_RATE, SC_NS);  // Inject a packet every 100ns (adjust as needed)
+
+
+				if(strcmp(this->name(),"PE_0_3") == 0)
+					continue;
+				if(strcmp(this->name(),"PE_0_2") == 0)
+					continue;
+				if(strcmp(this->name(),"PE_0_1") == 0)
+					continue;
+				if(strcmp(this->name(),"PE_0_0") == 0)
+					continue;
+				if(strcmp(this->name(),"PE_1_3") == 0)
+					continue;
+				if(strcmp(this->name(),"PE_1_2") == 0)
+					continue;
+				if(strcmp(this->name(),"PE_1_1") == 0)
+					continue;
+				if(strcmp(this->name(),"PE_1_0") == 0)
+					continue;
+
+				if( (traffic_pattern == CUSTOM) && (strcmp(this->name(),"PE_1_1") == 0))
+					continue;
+
+				MeshPacket pkt;
+				pkt.source_x = x_pos;
+				pkt.source_y = y_pos;
+				pkt.sequence = seq_cnt++;
+				do {
+					switch(traffic_pattern) {
+					case(UNI):      // Uniform random destination (excluding self)
+						pkt.dest_x = rand() % MESH_SIZE;
+						pkt.dest_y = rand() % MESH_SIZE;
+						break;
+					case(BT) :	// Bit complement destination
+						pkt.dest_x = MESH_SIZE - 1 - x_pos;
+						pkt.dest_y = MESH_SIZE - 1 - y_pos;
+						break;
+					case(TRANSPOSE):
+						pkt.dest_x = y_pos;
+						pkt.dest_y = x_pos;
+						break;
+					case(CUSTOM):
+						pkt.dest_x = 1;
+						pkt.dest_y = 1;
+						break;
+					}
+				} while (pkt.dest_x == x_pos && pkt.dest_y == y_pos);
+
+				//timestamp it.
+
+				pkt.timestamp = sc_time_stamp();
+				//forwarding packet to router.
+				out_port->write(pkt);
+				global_sent_packets.insert(pkt.sequence); //logging the packet as sent with this sequence number.
+				cout << this->name() << " sent packet to (" << pkt.dest_x << "," << pkt.dest_y << ") @ " << sc_time_stamp() << endl;
+			}
+		}
+	*/
+
+
+	//from reading the PIN out file.
+	void traffic_gen(void) {
+
+		static uint32_t seq_cnt = 0;
+		size_t trace_index = 0;
+
+		while (true) {
+			// If we're not using trace traffic, you can skip or run your old synthetic generator
+			if (!use_trace) {
+				wait(TRAFFIC_INJECTION_RATE, SC_NS);
 				continue;
+			}
+
+			// Scan until we find a matching entry
+			while (trace_index < trace_data.size() && trace_data[trace_index].core_id != core_id) {
+				trace_index++;
+			}
+
+			if (trace_index >= trace_data.size()) {
+				// All relevant entries for this core have been sent
+				wait(1, SC_MS); // Just idle to not exit the thread
+				continue;
+			}
+
+			const auto& access = trace_data[trace_index++];
 
 			MeshPacket pkt;
 			pkt.source_x = x_pos;
 			pkt.source_y = y_pos;
 			pkt.sequence = seq_cnt++;
-			do {
-				switch(traffic_pattern) {
-				case(UNI):      // Uniform random destination (excluding self)
-					pkt.dest_x = rand() % MESH_SIZE;
-					pkt.dest_y = rand() % MESH_SIZE;
-					break;
-				case(BT) :	// Bit complement destination
-					pkt.dest_x = MESH_SIZE - 1 - x_pos;
-					pkt.dest_y = MESH_SIZE - 1 - y_pos;
-					break;
-				case(TRANSPOSE):
-					pkt.dest_x = y_pos;
-					pkt.dest_y = x_pos;
-					break;
-				case(CUSTOM):
-					pkt.dest_x = 1;
-					pkt.dest_y = 1;
-					break;		
-				}
-			} while (pkt.dest_x == x_pos && pkt.dest_y == y_pos);
 
-			//timestamp it.
+			// Address to destination mapping
+			pkt.dest_x = (access.address >> 3) % MESH_SIZE;
+			pkt.dest_y = (access.address >> 6) % MESH_SIZE;
+
+			if (pkt.dest_x == x_pos && pkt.dest_y == y_pos) {
+				wait(TRAFFIC_INJECTION_RATE, SC_NS);
+				continue;  // skip sending to self
+			}
 
 			pkt.timestamp = sc_time_stamp();
-			//forwarding packet to router.
+			pkt.payload.raw[0] = (access.access_type == 'W') ? 0xAA : 0xBB;
+
 			out_port->write(pkt);
-			global_sent_packets.insert(pkt.sequence); //logging the packet as sent with this sequence number.
-			cout << this->name() << " sent packet to (" << pkt.dest_x << "," << pkt.dest_y << ") @ " << sc_time_stamp() << endl;
+			global_sent_packets.insert(pkt.sequence);
+
+			std::cout << this->name() << " [TRACE] sent "
+			          << access.access_type << " to ("
+			          << pkt.dest_x << "," << pkt.dest_y << ") [0x"
+			          << std::hex << access.address << "] @ "
+			          << sc_time_stamp() << std::endl;
+
+			wait(TRAFFIC_INJECTION_RATE, SC_NS);
 		}
 	}
 
@@ -214,6 +312,8 @@ int sc_main(int argc, char* argv[]) {
 
 	cout << "=== Initializing Network ===" << endl;
 
+	load_trace_from_file("noc_trace.out");
+
 	// Initialize routers and PEs
 	for (int y = 0; y < MESH_SIZE; y++) {
 		for (int x = 0; x < MESH_SIZE; x++) {
@@ -226,16 +326,18 @@ int sc_main(int argc, char* argv[]) {
 			std::string pe_name = "PE_" + std::to_string(x) + "_" + std::to_string(y);
 			pes[x][y] = new ProcessingElement(pe_name.c_str());
 			pes[x][y]->set_position(x, y);
+			pes[x][y]->use_trace=true;
+			pes[x][y]->set_core_id(y*MESH_SIZE+x); //unique id per PE.
 			cout << "Created " << pe_name << endl;
 		}
 	}
-	
-	//set ptrs of routers to thermal model.	
+
+	//set ptrs of routers to thermal model.
 	for(int y=0; y<MESH_SIZE; y++) {
 		for(int x=0; x<MESH_SIZE; x++) {
 			thermal.set_router_ptr(x, y, routers[x][y]);
 		}
-	}	
+	}
 
 	// Connect PEs to routers
 	cout << "\n=== Connecting PEs ===" << endl;
@@ -352,7 +454,7 @@ int sc_main(int argc, char* argv[]) {
 	}
 	cout << "=================================\n" << endl;
 
-	
+
 
 
 	// Start simulation
@@ -367,7 +469,7 @@ int sc_main(int argc, char* argv[]) {
 	}
 
 	//sc_start(SIMULATION_TIME, SC_NS);
-	
+
 
 	// Check for lost packets after simulation ends
 	cout << "\n=== Packet Loss Report(Sent but not received) ===" << endl;
@@ -513,6 +615,7 @@ int sc_main(int argc, char* argv[]) {
 	/// total stats regarding packets in the system.
 	// Updated packet loss statistics to account for buffered packets
 //	cout << "\033[1;31m" << endl;//red color
+	cout << std::dec ;
 	cout << "\033[38;5;202m" << endl;
 	cout << "\n\t\t\t\t\t=== Adjusted Packet Delivery Statistics ===" << endl;
 	cout << "\t\t\t\t\tTotal sent packets:        " << global_sent_packets.size() << endl;

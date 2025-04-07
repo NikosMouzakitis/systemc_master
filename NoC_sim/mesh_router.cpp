@@ -86,6 +86,7 @@ MeshRouter::~MeshRouter() {
 	delete out_east;
 	delete in_west;
 	delete out_west;
+	free(port_already_tx);
 }
 
 bool MeshRouter::push_to_buffer(std::deque<MeshPacket>& buffer, const MeshPacket& packet) {
@@ -260,7 +261,7 @@ void MeshRouter::router_process() {
 			count_packet();
 			validate_packet(packets[1]);
 			cout <<"\t\t\t\t"<< "-----------------"<<this->name()<<"-------------------------------------------"<<endl;
-			cout <<"\t\t\t\t"<< this->name() << " received packet seq:" << packets[0].sequence
+			cout <<"\t\t\t\t"<< this->name() << " received packet seq:" << packets[1].sequence
 			     << " from SOUTH (source:" << packets[1].source_x << "," << packets[1].source_y << ")"
 			     << " (dest:" << packets[1].dest_x << "," << packets[1].dest_y << ")"
 			     << " @ " << sc_time_stamp() << endl;
@@ -270,7 +271,7 @@ void MeshRouter::router_process() {
 			validate_packet(packets[2]);
 			count_packet();
 			cout <<"\t\t\t\t"<< "-----------------"<<this->name()<<"-------------------------------------------"<<endl;
-			cout <<"\t\t\t\t"<< this->name() << " received packet seq:" << packets[0].sequence
+			cout <<"\t\t\t\t"<< this->name() << " received packet seq:" << packets[2].sequence
 			     << " from EAST (source:" << packets[2].source_x << "," << packets[2].source_y << ")"
 			     << " (dest:" << packets[2].dest_x << "," << packets[2].dest_y << ")"
 			     << " @ " << sc_time_stamp() << endl;
@@ -280,7 +281,7 @@ void MeshRouter::router_process() {
 			validate_packet(packets[3]);
 			count_packet();
 			cout <<"\t\t\t\t"<< "-----------------"<<this->name()<<"-------------------------------------------"<<endl;
-			cout <<"\t\t\t\t"<< this->name() << " received packet seq:" << packets[0].sequence
+			cout <<"\t\t\t\t"<< this->name() << " received packet seq:" << packets[3].sequence
 			     << " from WEST (source:" << packets[3].source_x << "," << packets[3].source_y << ")"
 			     << " (dest:" << packets[3].dest_x << "," << packets[3].dest_y << ")"
 			     << " @ " << sc_time_stamp() << endl;
