@@ -30,7 +30,9 @@ def parse_thermal_data(csv_file):
             if line.strip():
                 values = line.split(',')
                 timestamp = float(values[0])
-                temps = {core: float(temp) for core, temp in zip(core_columns, values[1:])}
+              #  temps = {core: float(temp) for core, temp in zip(core_columns, values[1:])}
+                temps = {core: float(temp) if temp else None for core, temp in zip(core_columns, values[1:])}
+
                 data.append({'Time': timestamp, **temps})
 
     return pd.DataFrame(data).sort_values('Time')

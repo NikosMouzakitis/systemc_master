@@ -25,7 +25,7 @@ Mesh m; //mesh for controlling cores-memories.
 
 #define ROUTER_BUFFER_SIZE	8 //affects the dropped packets observation
 #define TRAFFIC_INJECTION_RATE 14
-#define SIMULATION_TIME	 80000
+#define SIMULATION_TIME	 7000
 #define PE_ROUTER_FIFO_SIZE 4
 #define ROUTER_ROUTER_FIFO_SIZE 4
 
@@ -139,9 +139,16 @@ SC_MODULE(ProcessingElement) {
 
 	SC_CTOR(ProcessingElement) : x_pos(0), y_pos(0), use_trace(false), core_id(-1) {
 
+		//assignation of cores and memories in the Routers of the NoC.
 		m.assignCore(0,0,0);
-		m.assignMemory(0,1,101);
-		m.assignMemory(0,2,102);
+		m.assignCore(0,1,1);
+		m.assignCore(0,2,2);
+		m.assignCore(1,0,3);
+		m.assignMemory(2,2,204); 
+	//	m.assignMemory(1,2,101);
+	//	m.assignMemory(2,0,205);
+	//	m.assignMemory(2,1,302);
+		
 		//m.displayMesh();	
 		m.splitMemoryAddresses(0x800000000000);
 
@@ -242,7 +249,7 @@ SC_MODULE(ProcessingElement) {
 			while (trace_index < trace_data.size() && trace_data[trace_index].core_id != core_id) {
 				trace_index++;
 			}
-
+			
 			if (trace_index >= trace_data.size()) {
 				// All relevant entries for this core have been sent
 				wait(1, SC_MS); // Just idle to not exit the thread
@@ -358,7 +365,10 @@ int sc_main(int argc, char* argv[]) {
 			pes[x][y] = new ProcessingElement(pe_name.c_str());
 			pes[x][y]->set_position(x, y);
 			pes[x][y]->use_trace=true;
-			pes[x][y]->set_core_id(y*MESH_SIZE+x); //unique id per PE.
+			
+			//getter integrating mesh class.
+//			pes[x][y]->set_core_id(y*MESH_SIZE+x); //unique id per PE.
+			pes[x][y]->set_core_id(m.getMemoryIdByCoordinates(x, y));
 			cout << "Created " << pe_name << endl;
 		}
 	}

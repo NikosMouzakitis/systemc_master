@@ -93,6 +93,25 @@ public:
         return -1;  // Return -1 if address is out of bounds
     }
 
+    int getMemoryIdByCoordinates(int x, int y) {
+	assert(x >= 0 && x < MESH_SIZE && y >= 0 && y < MESH_SIZE);  // Bounds check
+
+	Memory* memory = dynamic_cast<Memory*>(grid[x][y]);
+	if (memory) {
+		cout << "returning " << memory->memory_id << endl;
+		return memory->memory_id;
+	} else {
+		cout << "Error: No memory assigned at coordinates (" << x << ", " << y << ")\n";
+	}
+	Core * cr = dynamic_cast<Core*>(grid[x][y]);
+	if (cr) {
+		cout << "returning " << cr->core_id << endl;
+		return cr->core_id;
+	} else {
+		cout << "Error: No memory assigned at coordinates (" << x << ", " << y << ")\n";
+	}
+    }
+
     // Get the (x, y) of a memory by its ID
     pair<int, int> getCoordinatesByMemoryId(int memory_id) {
         for (int i = 0; i < MESH_SIZE; ++i) {

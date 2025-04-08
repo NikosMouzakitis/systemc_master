@@ -20,7 +20,7 @@ private:
     const double HEAT_TRANSFER_COEFF = 0.0005;
     const double MAX_HEATING = 	 0.00028;      // Max °C increase per update
     const double COOLING =	 0.00085;     // Cooling rate
- 
+    int mesh_size; 
     std::vector<std::vector<double>> router_temps;
     std::vector<std::vector<MeshRouter*>> router_ptrs;
 };
